@@ -529,6 +529,210 @@ public:
 };
 
 // =====================================================================
+//  NAMESPACE-ISOLATED VECTOR ENGINE (Versioned /v1 API)
+// =====================================================================
+
+struct V1VectorItem {
+    std::string id;
+    std::string namespaceName;
+    std::vector<float> values;
+    json metadata;
+};
+
+class NamespaceStore {
+    std::string nsName;
+    std::unordered_map<std::string, V1VectorItem> store;
+    std::unordered_map<std::string, int> idToInternalId;
+    std::unordered_map<int, std::string> internalIdToId;
+    BruteForce bf;
+    KDTree kdt;
+    HNSW hnsw;
+    mutable std::shared_mutex mu;
+    int nextInternalId = 1;
+    int dims = 0;
+
+public:
+    explicit NamespaceStore(const std::string& name)
+        : nsName(name), kdt(16), hnsw(16, 200) {}
+
+    std::string insert(const std::string& extId, const std::vector<float>& values,
+                       const json& meta, const std::string& metric = "cosine")
+    {
+        std::unique_lock<std::shared_mutex> lk(mu);
+        if (dims == 0) dims = (int)values.size();
+
+        std::string finalId = extId.empty() ? ("vec_" + std::to_string(nextInternalId)) : extId;
+
+        if (idToInternalId.count(finalId)) {
+            int oldIntId = idToInternalId[finalId];
+            store.erase(finalId);
+            bf.remove(oldIntId);
+            hnsw.remove(oldIntId);
+            internalIdToId.erase(oldIntId);
+            idToInternalId.erase(finalId);
+        }
+
+        int intId = nextInternalId++;
+        idToInternalId[finalId] = intId;
+        internalIdToId[intId] = finalId;
+
+        std::vector<float> normValues = values;
+        if (metric == "cosine") normalizeVector(normValues);
+
+        V1VectorItem item{finalId, nsName, normValues, meta};
+        store[finalId] = item;
+
+        VectorItem vi{intId, meta.dump(), nsName, normValues};
+        auto dfn = getDistFn(metric);
+        bf.insert(vi);
+        kdt.insert(vi);
+        hnsw.insert(vi, dfn);
+
+        return finalId;
+    }
+
+    bool remove(const std::string& extId) {
+        std::unique_lock<std::shared_mutex> lk(mu);
+        if (!idToInternalId.count(extId)) return false;
+        int intId = idToInternalId[extId];
+        store.erase(extId);
+        idToInternalId.erase(extId);
+        internalIdToId.erase(intId);
+        bf.remove(intId);
+        hnsw.remove(intId);
+        std::vector<VectorItem> rem;
+        for (auto& [idStr, item] : store) {
+            int iId = idToInternalId[idStr];
+            rem.push_back({iId, item.metadata.dump(), nsName, item.values});
+        }
+        kdt.rebuild(rem);
+        return true;
+    }
+
+    struct SearchHit {
+        std::string id;
+        float distance;
+        json metadata;
+        std::vector<float> values;
+    };
+
+    struct SearchResult {
+        std::string ns;
+        std::vector<SearchHit> hits;
+        long long latencyUs;
+        std::string algo;
+        std::string metric;
+    };
+
+    SearchResult search(const std::vector<float>& q, int k, const std::string& metric, const std::string& algo) const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        auto t0 = std::chrono::high_resolution_clock::now();
+        std::vector<float> qVec = q;
+        if (metric == "cosine") normalizeVector(qVec);
+        auto dfn = getDistFn(metric);
+
+        std::vector<std::pair<float, int>> raw;
+        if      (algo == "bruteforce") raw = const_cast<BruteForce&>(bf).knn(qVec, k, dfn);
+        else if (algo == "kdtree")     raw = const_cast<KDTree&>(kdt).knn(qVec, k, dfn);
+        else                           raw = const_cast<HNSW&>(hnsw).knn(qVec, k, 50, dfn);
+
+        long long us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now() - t0).count();
+
+        SearchResult res;
+        res.ns = nsName;
+        res.latencyUs = us;
+        res.algo = algo;
+        res.metric = metric;
+
+        for (auto& [dist, intId] : raw) {
+            if (internalIdToId.count(intId)) {
+                std::string extId = internalIdToId.at(intId);
+                if (store.count(extId)) {
+                    const auto& item = store.at(extId);
+                    res.hits.push_back({item.id, dist, item.metadata, item.values});
+                }
+            }
+        }
+        return res;
+    }
+
+    size_t size() const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        return store.size();
+    }
+
+    int getDims() const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        return dims;
+    }
+};
+
+class VectorEngine {
+    std::unordered_map<std::string, std::shared_ptr<NamespaceStore>> namespaces;
+    mutable std::shared_mutex mu;
+
+public:
+    std::shared_ptr<NamespaceStore> getOrCreateNamespace(const std::string& nsName) {
+        std::unique_lock<std::shared_mutex> lk(mu);
+        std::string name = nsName.empty() ? "default" : nsName;
+        if (!namespaces.count(name)) {
+            namespaces[name] = std::make_shared<NamespaceStore>(name);
+        }
+        return namespaces[name];
+    }
+
+    std::shared_ptr<NamespaceStore> getNamespace(const std::string& nsName) const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        std::string name = nsName.empty() ? "default" : nsName;
+        auto it = namespaces.find(name);
+        if (it != namespaces.end()) return it->second;
+        return nullptr;
+    }
+
+    bool deleteNamespace(const std::string& nsName) {
+        std::unique_lock<std::shared_mutex> lk(mu);
+        std::string name = nsName.empty() ? "default" : nsName;
+        if (!namespaces.count(name)) return false;
+        namespaces.erase(name);
+        return true;
+    }
+
+    size_t totalVectors() const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        size_t total = 0;
+        for (auto& [name, ns] : namespaces) total += ns->size();
+        return total;
+    }
+
+    size_t totalNamespaces() const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        return namespaces.size();
+    }
+
+    json getStats() const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        json nsStats = json::object();
+        size_t total = 0;
+        for (auto& [name, ns] : namespaces) {
+            size_t count = ns->size();
+            total += count;
+            nsStats[name] = {
+                {"count", count},
+                {"dims", ns->getDims()}
+            };
+        }
+        return json{
+            {"totalVectors", total},
+            {"totalNamespaces", namespaces.size()},
+            {"namespaces", nsStats},
+            {"supportedMetrics", json::array({"cosine", "euclidean", "manhattan"})},
+            {"supportedAlgorithms", json::array({"hnsw", "kdtree", "bruteforce"})}
+        };
+    }
+};
+
+// =====================================================================
 //  DEMO DATA  (16D categorical vectors)
 // =====================================================================
 
@@ -591,8 +795,11 @@ int main() {
 
     logStartupConfig(config);
 
-    VectorDB   db(DIMS);
-    DocumentDB docDB;
+    static const auto g_startTime = std::chrono::steady_clock::now();
+
+    VectorDB     db(DIMS);
+    DocumentDB   docDB;
+    VectorEngine v1Engine;
     OllamaClient ollama(config.ollamaHost, config.ollamaPort,
                         config.embedModel, config.genModel,
                         config.embedTimeoutSec, config.genTimeoutSec);
@@ -645,6 +852,226 @@ int main() {
     // CORS preflight
     svr.Options(".*", [](const httplib::Request&, httplib::Response& res) {
         cors(res); res.status = 204;
+    });
+
+    // ── VERSIONED V1 VECTOR ENGINE ENDPOINTS ──────────────────────────
+
+    svr.Get("/v1/health", [&](const httplib::Request&, httplib::Response& res) {
+        cors(res);
+        auto uptime = std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - g_startTime).count();
+        json h = {
+            {"status", "ok"},
+            {"version", "1.0.0"},
+            {"uptimeSec", uptime}
+        };
+        res.set_content(h.dump(), "application/json");
+    });
+
+    svr.Get("/v1/stats", [&](const httplib::Request&, httplib::Response& res) {
+        cors(res);
+        res.set_content(v1Engine.getStats().dump(), "application/json");
+    });
+
+    svr.Post("/v1/vectors", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        if (!checkRateLimit(res)) return;
+        json b;
+        try { b = json::parse(req.body); } catch (...) {
+            sendJsonError(res, 400, "INVALID_JSON", "Malformed JSON syntax."); return;
+        }
+
+        if (!b.contains("values") || !b["values"].is_array()) {
+            sendJsonError(res, 422, "MISSING_FIELD", "Field 'values' must be an array of numbers."); return;
+        }
+
+        std::vector<float> values;
+        try { values = b["values"].get<std::vector<float>>(); } catch (...) {
+            sendJsonError(res, 422, "INVALID_FIELD_TYPE", "Field 'values' must contain numbers."); return;
+        }
+
+        if (values.empty()) {
+            sendJsonError(res, 422, "INVALID_DIMENSIONS", "Vector values cannot be empty."); return;
+        }
+
+        std::string nsName = b.value("namespace", "default");
+        std::string extId = b.value("id", "");
+        json meta = b.value("metadata", json::object());
+
+        auto ns = v1Engine.getOrCreateNamespace(nsName);
+        if (ns->getDims() > 0 && ns->getDims() != (int)values.size()) {
+            sendJsonError(res, 422, "INVALID_DIMENSIONS",
+                "Vector dimension mismatch. Expected " + std::to_string(ns->getDims()) +
+                ", got " + std::to_string(values.size()));
+            return;
+        }
+
+        std::string assignedId = ns->insert(extId, values, meta);
+
+        json out = {
+            {"id", assignedId},
+            {"namespace", nsName},
+            {"dims", values.size()}
+        };
+        res.set_content(out.dump(), "application/json");
+    });
+
+    svr.Post("/v1/vectors/batch", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        if (!checkRateLimit(res)) return;
+        json b;
+        try { b = json::parse(req.body); } catch (...) {
+            sendJsonError(res, 400, "INVALID_JSON", "Malformed JSON syntax."); return;
+        }
+
+        if (!b.contains("vectors") || !b["vectors"].is_array()) {
+            sendJsonError(res, 422, "MISSING_FIELD", "Field 'vectors' must be an array."); return;
+        }
+
+        std::string defaultNs = b.value("namespace", "default");
+        int count = 0;
+
+        for (const auto& item : b["vectors"]) {
+            if (!item.is_object() || !item.contains("values") || !item["values"].is_array()) continue;
+            std::vector<float> values;
+            try { values = item["values"].get<std::vector<float>>(); } catch (...) { continue; }
+            if (values.empty()) continue;
+
+            std::string itemNs = item.value("namespace", defaultNs);
+            std::string extId = item.value("id", "");
+            json meta = item.value("metadata", json::object());
+
+            auto ns = v1Engine.getOrCreateNamespace(itemNs);
+            if (ns->getDims() > 0 && ns->getDims() != (int)values.size()) continue;
+
+            ns->insert(extId, values, meta);
+            count++;
+        }
+
+        json out = {
+            {"inserted", count},
+            {"namespace", defaultNs}
+        };
+        res.set_content(out.dump(), "application/json");
+    });
+
+    svr.Post("/v1/vectors/search", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        if (!checkRateLimit(res)) return;
+        json b;
+        try { b = json::parse(req.body); } catch (...) {
+            sendJsonError(res, 400, "INVALID_JSON", "Malformed JSON syntax."); return;
+        }
+
+        std::string nsName = b.value("namespace", "default");
+        if (!b.contains("vector") || !b["vector"].is_array()) {
+            sendJsonError(res, 422, "MISSING_FIELD", "Field 'vector' must be a query float array."); return;
+        }
+
+        std::vector<float> q;
+        try { q = b["vector"].get<std::vector<float>>(); } catch (...) {
+            sendJsonError(res, 422, "INVALID_FIELD_TYPE", "Field 'vector' must be an array of numbers."); return;
+        }
+
+        if (q.empty()) {
+            sendJsonError(res, 422, "INVALID_DIMENSIONS", "Query vector cannot be empty."); return;
+        }
+
+        if (!b.contains("k") || !b["k"].is_number_integer()) {
+            sendJsonError(res, 422, "MISSING_FIELD", "Field 'k' must be a positive integer."); return;
+        }
+
+        int k = b["k"].get<int>();
+        if (k <= 0) {
+            sendJsonError(res, 422, "INVALID_K", "Parameter 'k' must be greater than 0."); return;
+        }
+
+        std::string algo = b.value("algorithm", "hnsw");
+        std::string metric = b.value("metric", "cosine");
+
+        if (algo != "hnsw" && algo != "kdtree" && algo != "bruteforce") {
+            sendJsonError(res, 422, "INVALID_ALGORITHM", "Unsupported algorithm '" + algo + "'."); return;
+        }
+
+        if (metric != "cosine" && metric != "euclidean" && metric != "manhattan") {
+            sendJsonError(res, 422, "INVALID_METRIC", "Unsupported metric '" + metric + "'."); return;
+        }
+
+        auto ns = v1Engine.getNamespace(nsName);
+        if (!ns || ns->size() == 0) {
+            json out = {
+                {"namespace", nsName},
+                {"hits", json::array()},
+                {"latencyUs", 0},
+                {"algorithm", algo},
+                {"metric", metric}
+            };
+            res.set_content(out.dump(), "application/json");
+            return;
+        }
+
+        if (ns->getDims() > 0 && ns->getDims() != (int)q.size()) {
+            sendJsonError(res, 422, "INVALID_DIMENSIONS",
+                "Query dimension mismatch. Namespace expects " + std::to_string(ns->getDims()) +
+                ", got " + std::to_string(q.size()));
+            return;
+        }
+
+        auto sres = ns->search(q, k, metric, algo);
+
+        json hitsArr = json::array();
+        for (const auto& hit : sres.hits) {
+            hitsArr.push_back({
+                {"id", hit.id},
+                {"distance", hit.distance},
+                {"metadata", hit.metadata}
+            });
+        }
+
+        json out = {
+            {"namespace", nsName},
+            {"hits", hitsArr},
+            {"latencyUs", sres.latencyUs},
+            {"algorithm", sres.algo},
+            {"metric", sres.metric}
+        };
+        res.set_content(out.dump(), "application/json");
+    });
+
+    svr.Delete(R"(/v1/vectors/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        if (!checkRateLimit(res)) return;
+        std::string extId = req.matches[1];
+        std::string nsName = req.get_param_value("namespace");
+        if (nsName.empty()) nsName = "default";
+
+        auto ns = v1Engine.getNamespace(nsName);
+        if (!ns || !ns->remove(extId)) {
+            sendJsonError(res, 404, "NOT_FOUND", "Vector ID '" + extId + "' not found in namespace '" + nsName + "'.");
+            return;
+        }
+
+        json out = {
+            {"deleted", true},
+            {"id", extId},
+            {"namespace", nsName}
+        };
+        res.set_content(out.dump(), "application/json");
+    });
+
+    svr.Delete(R"(/v1/namespaces/([^/]+))", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        if (!checkRateLimit(res)) return;
+        std::string nsName = req.matches[1];
+        if (!v1Engine.deleteNamespace(nsName)) {
+            sendJsonError(res, 404, "NOT_FOUND", "Namespace '" + nsName + "' not found.");
+            return;
+        }
+        json out = {
+            {"deleted", true},
+            {"namespace", nsName}
+        };
+        res.set_content(out.dump(), "application/json");
     });
 
     // ── DEMO VECTOR ENDPOINTS ─────────────────────────────────────────

@@ -53,6 +53,7 @@ add_executable(unit_tests
     tests/test_hnsw.cpp
     tests/test_edgecases.cpp
     tests/test_concurrency.cpp
+    tests/test_v1_api.cpp
     distance.cpp
     brute_force.cpp
     kd_tree.cpp
