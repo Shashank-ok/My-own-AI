@@ -532,6 +532,18 @@ public:
 //  NAMESPACE-ISOLATED VECTOR ENGINE (Versioned /v1 API)
 // =====================================================================
 
+enum class NamespaceStatus { EMPTY, READY, REBUILDING, FAILED };
+
+inline std::string statusToString(NamespaceStatus s) {
+    switch (s) {
+        case NamespaceStatus::EMPTY: return "empty";
+        case NamespaceStatus::READY: return "ready";
+        case NamespaceStatus::REBUILDING: return "rebuilding";
+        case NamespaceStatus::FAILED: return "failed";
+    }
+    return "unknown";
+}
+
 struct V1VectorItem {
     std::string id;
     std::string namespaceName;
@@ -550,10 +562,31 @@ class NamespaceStore {
     mutable std::shared_mutex mu;
     int nextInternalId = 1;
     int dims = 0;
+    NamespaceStatus status = NamespaceStatus::EMPTY;
 
 public:
     explicit NamespaceStore(const std::string& name)
         : nsName(name), kdt(16), hnsw(16, 200) {}
+
+    void setStatus(NamespaceStatus s) {
+        std::unique_lock<std::shared_mutex> lk(mu);
+        status = s;
+    }
+
+    NamespaceStatus getStatus() const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        if (status == NamespaceStatus::EMPTY && store.size() > 0) return NamespaceStatus::READY;
+        return status;
+    }
+
+    std::string getStatusStr() const {
+        return statusToString(getStatus());
+    }
+
+    bool exists(const std::string& extId) const {
+        std::shared_lock<std::shared_mutex> lk(mu);
+        return idToInternalId.count(extId) > 0;
+    }
 
     std::string insert(const std::string& extId, const std::vector<float>& values,
                        const json& meta, const std::string& metric = "cosine")
@@ -588,6 +621,7 @@ public:
         kdt.insert(vi);
         hnsw.insert(vi, dfn);
 
+        status = NamespaceStatus::READY;
         return finalId;
     }
 
@@ -606,6 +640,7 @@ public:
             rem.push_back({iId, item.metadata.dump(), nsName, item.values});
         }
         kdt.rebuild(rem);
+        if (store.empty()) status = NamespaceStatus::EMPTY;
         return true;
     }
 
@@ -710,6 +745,77 @@ public:
         return namespaces.size();
     }
 
+    struct RebuildResult {
+        bool success;
+        std::string errorMessage;
+        size_t vectorCount;
+    };
+
+    RebuildResult atomicRebuild(const std::string& nsName, const json& vectorsArray, const std::string& metric = "cosine") {
+        std::string name = nsName.empty() ? "default" : nsName;
+
+        std::shared_ptr<NamespaceStore> activeNs;
+        {
+            std::unique_lock<std::shared_mutex> lk(mu);
+            if (!namespaces.count(name)) {
+                namespaces[name] = std::make_shared<NamespaceStore>(name);
+            }
+            activeNs = namespaces[name];
+            activeNs->setStatus(NamespaceStatus::REBUILDING);
+        }
+
+        auto candidate = std::make_shared<NamespaceStore>(name);
+        std::unordered_set<std::string> seenIds;
+        int expectedDims = activeNs->getDims();
+
+        for (size_t i = 0; i < vectorsArray.size(); ++i) {
+            const auto& item = vectorsArray[i];
+            if (!item.is_object() || !item.contains("values") || !item["values"].is_array()) {
+                activeNs->setStatus(NamespaceStatus::FAILED);
+                return {false, "Item at index " + std::to_string(i) + " missing 'values' array.", 0};
+            }
+
+            std::vector<float> values;
+            try { values = item["values"].get<std::vector<float>>(); } catch (...) {
+                activeNs->setStatus(NamespaceStatus::FAILED);
+                return {false, "Item at index " + std::to_string(i) + " contains non-numeric values.", 0};
+            }
+
+            if (values.empty()) {
+                activeNs->setStatus(NamespaceStatus::FAILED);
+                return {false, "Item at index " + std::to_string(i) + " has empty vector values.", 0};
+            }
+
+            if (expectedDims > 0 && (int)values.size() != expectedDims) {
+                activeNs->setStatus(NamespaceStatus::FAILED);
+                return {false, "Vector dimension mismatch at index " + std::to_string(i) +
+                               ". Expected " + std::to_string(expectedDims) + ", got " + std::to_string(values.size()) +
+                               ". Active index preserved.", 0};
+            }
+
+            std::string extId = item.value("id", "");
+            if (!extId.empty()) {
+                if (seenIds.count(extId)) {
+                    activeNs->setStatus(NamespaceStatus::FAILED);
+                    return {false, "Duplicate vector ID '" + extId + "' within rebuild batch.", 0};
+                }
+                seenIds.insert(extId);
+            }
+
+            json meta = item.value("metadata", json::object());
+            candidate->insert(extId, values, meta, metric);
+        }
+
+        candidate->setStatus(NamespaceStatus::READY);
+
+        {
+            std::unique_lock<std::shared_mutex> lk(mu);
+            namespaces[name] = candidate;
+        }
+
+        return {true, "", candidate->size()};
+    }
+
     json getStats() const {
         std::shared_lock<std::shared_mutex> lk(mu);
         json nsStats = json::object();
@@ -719,7 +825,8 @@ public:
             total += count;
             nsStats[name] = {
                 {"count", count},
-                {"dims", ns->getDims()}
+                {"dims", ns->getDims()},
+                {"status", ns->getStatusStr()}
             };
         }
         return json{
@@ -928,29 +1035,110 @@ int main() {
             sendJsonError(res, 422, "MISSING_FIELD", "Field 'vectors' must be an array."); return;
         }
 
-        std::string defaultNs = b.value("namespace", "default");
-        int count = 0;
+        const auto& vecsArr = b["vectors"];
+        if (vecsArr.size() > 1000) {
+            sendJsonError(res, 422, "INVALID_BATCH_SIZE", "Batch size exceeds maximum limit of 1000 items."); return;
+        }
 
-        for (const auto& item : b["vectors"]) {
-            if (!item.is_object() || !item.contains("values") || !item["values"].is_array()) continue;
+        std::string defaultNs = b.value("namespace", "default");
+        std::unordered_set<std::string> seenBatchIds;
+
+        // Pre-validate batch for duplicate IDs within request
+        for (size_t i = 0; i < vecsArr.size(); ++i) {
+            const auto& item = vecsArr[i];
+            if (item.is_object() && item.contains("id") && item["id"].is_string()) {
+                std::string idStr = item["id"].get<std::string>();
+                if (!idStr.empty()) {
+                    if (seenBatchIds.count(idStr)) {
+                        sendJsonError(res, 422, "DUPLICATE_ID", "Duplicate vector ID '" + idStr + "' within batch request.");
+                        return;
+                    }
+                    seenBatchIds.insert(idStr);
+                }
+            }
+        }
+
+        int inserted = 0;
+        int updated = 0;
+        int rejected = 0;
+
+        for (const auto& item : vecsArr) {
+            if (!item.is_object() || !item.contains("values") || !item["values"].is_array()) {
+                rejected++; continue;
+            }
             std::vector<float> values;
-            try { values = item["values"].get<std::vector<float>>(); } catch (...) { continue; }
-            if (values.empty()) continue;
+            try { values = item["values"].get<std::vector<float>>(); } catch (...) { rejected++; continue; }
+            if (values.empty()) { rejected++; continue; }
 
             std::string itemNs = item.value("namespace", defaultNs);
             std::string extId = item.value("id", "");
             json meta = item.value("metadata", json::object());
 
             auto ns = v1Engine.getOrCreateNamespace(itemNs);
-            if (ns->getDims() > 0 && ns->getDims() != (int)values.size()) continue;
+            if (ns->getDims() > 0 && ns->getDims() != (int)values.size()) {
+                rejected++; continue;
+            }
 
+            bool isUpdate = !extId.empty() && ns->exists(extId);
             ns->insert(extId, values, meta);
-            count++;
+
+            if (isUpdate) updated++;
+            else inserted++;
         }
 
         json out = {
-            {"inserted", count},
+            {"inserted", inserted},
+            {"updated", updated},
+            {"rejected", rejected},
             {"namespace", defaultNs}
+        };
+        res.set_content(out.dump(), "application/json");
+    });
+
+    svr.Get(R"(/v1/namespaces/([^/]+)/status)", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        if (!checkRateLimit(res)) return;
+        std::string nsName = req.matches[1];
+        auto ns = v1Engine.getNamespace(nsName);
+        if (!ns) {
+            sendJsonError(res, 404, "NOT_FOUND", "Namespace '" + nsName + "' not found."); return;
+        }
+
+        json out = {
+            {"namespace", nsName},
+            {"status", ns->getStatusStr()},
+            {"vectorCount", ns->size()},
+            {"dims", ns->getDims()}
+        };
+        res.set_content(out.dump(), "application/json");
+    });
+
+    svr.Post(R"(/v1/namespaces/([^/]+)/rebuild)", [&](const httplib::Request& req, httplib::Response& res) {
+        cors(res);
+        if (!checkRateLimit(res)) return;
+        std::string nsName = req.matches[1];
+        json b;
+        try { b = json::parse(req.body); } catch (...) {
+            sendJsonError(res, 400, "INVALID_JSON", "Malformed JSON syntax."); return;
+        }
+
+        if (!b.contains("vectors") || !b["vectors"].is_array()) {
+            sendJsonError(res, 422, "MISSING_FIELD", "Field 'vectors' must be an array of vector objects."); return;
+        }
+
+        std::string metric = b.value("metric", "cosine");
+        auto rebuildRes = v1Engine.atomicRebuild(nsName, b["vectors"], metric);
+
+        if (!rebuildRes.success) {
+            sendJsonError(res, 422, "REBUILD_FAILED", rebuildRes.errorMessage);
+            return;
+        }
+
+        json out = {
+            {"namespace", nsName},
+            {"status", "ready"},
+            {"rebuilt", true},
+            {"vectorCount", rebuildRes.vectorCount}
         };
         res.set_content(out.dump(), "application/json");
     });
