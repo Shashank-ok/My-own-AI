@@ -13,6 +13,8 @@ export const envSchema = z.object({
   OLLAMA_EMBEDDING_MODEL: z.string().min(1).default('nomic-embed-text'),
   OLLAMA_GENERATE_MODEL: z.string().min(1).default('llama3:8b'),
   OLLAMA_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+  DEFAULT_CHUNK_SIZE: z.coerce.number().int().positive().default(500),
+  DEFAULT_CHUNK_OVERLAP: z.coerce.number().int().nonnegative().default(50),
   JWT_SECRET: z.string().min(1).default('dev-secret-key-change-in-prod-12345'),
   ALLOWED_ORIGINS: z
     .string()
@@ -45,6 +47,8 @@ export function loadConfig(rawInput: RawConfigInput = process.env) {
     ollamaEmbeddingModel: data.OLLAMA_EMBEDDING_MODEL,
     ollamaGenerateModel: data.OLLAMA_GENERATE_MODEL,
     ollamaTimeoutMs: data.OLLAMA_TIMEOUT_MS,
+    defaultChunkSize: data.DEFAULT_CHUNK_SIZE,
+    defaultChunkOverlap: data.DEFAULT_CHUNK_OVERLAP,
     jwtSecret: data.JWT_SECRET,
     allowedOrigins: data.ALLOWED_ORIGINS,
     requestSizeLimit: data.REQUEST_SIZE_LIMIT,
