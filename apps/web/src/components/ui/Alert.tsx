@@ -1,19 +1,15 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
+
+export type AlertVariant = 'info' | 'success' | 'warning' | 'error';
 
 export interface AlertProps {
-  variant?: 'info' | 'success' | 'warning' | 'error';
+  variant?: AlertVariant;
   title?: string;
-  children: ReactNode;
+  children: React.ReactNode;
   onClose?: () => void;
   className?: string;
+  style?: React.CSSProperties;
 }
-
-const icons: Record<'info' | 'success' | 'warning' | 'error', string> = {
-  info: 'ℹ️',
-  success: '✅',
-  warning: '⚠️',
-  error: '🚨',
-};
 
 export const Alert: React.FC<AlertProps> = ({
   variant = 'info',
@@ -21,29 +17,25 @@ export const Alert: React.FC<AlertProps> = ({
   children,
   onClose,
   className = '',
+  style,
 }) => {
+  const iconMap: Record<AlertVariant, string> = {
+    info: 'ℹ️',
+    success: '✅',
+    warning: '⚠️',
+    error: '❌',
+  };
+
   return (
-    <div className={`alert alert-${variant} ${className}`} role="alert">
-      <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>{icons[variant]}</span>
-      <div style={{ flex: 1 }}>
-        {title && <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{title}</div>}
-        <div>{children}</div>
+    <div className={`alert alert-${variant} ${className}`} style={style} role="alert">
+      <div className="alert-icon">{iconMap[variant]}</div>
+      <div className="alert-content">
+        {title && <div className="alert-title">{title}</div>}
+        <div className="alert-message">{children}</div>
       </div>
       {onClose && (
-        <button
-          onClick={onClose}
-          aria-label="Dismiss alert"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'inherit',
-            cursor: 'pointer',
-            fontSize: '1rem',
-            opacity: 0.8,
-            padding: '0.1rem 0.3rem',
-          }}
-        >
-          ✕
+        <button type="button" className="alert-close" onClick={onClose} aria-label="Close alert">
+          ×
         </button>
       )}
     </div>

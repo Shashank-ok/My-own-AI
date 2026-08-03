@@ -1,5 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { config } from '../config/env';
+import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/Button';
 
 interface NavbarProps {
@@ -7,6 +9,8 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
+  const { user } = useAuth();
+
   return (
     <header
       style={{
@@ -34,7 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
           ☰
         </Button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div
             style={{
               width: '32px',
@@ -52,13 +56,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
           >
             AI
           </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.2rem', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
             Your OWN AI
           </span>
-        </div>
+        </Link>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
         <span className="badge badge-success">API Connected</span>
         <span
           style={{
@@ -69,6 +73,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
         >
           {config.apiBaseUrl}
         </span>
+
+        {user && (
+          <Link
+            to="/profile"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.35rem 0.75rem',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: 'hsla(224, 20%, 16%, 0.8)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-primary)',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+            }}
+          >
+            <span style={{ fontSize: '1rem' }}>👤</span>
+            <span>{user.name}</span>
+          </Link>
+        )}
       </div>
     </header>
   );

@@ -1,41 +1,45 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Button } from './ui/Button';
 
-interface SidebarProps {
-  isOpen: boolean;
+export interface SidebarProps {
+  collapsed?: boolean;
+  isOpen?: boolean;
 }
 
-interface NavItem {
-  label: string;
-  path: string;
-  icon: string;
-}
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, isOpen = true }) => {
+  const { user, logout } = useAuth();
 
-const navItems: NavItem[] = [
-  { label: 'Dashboard', path: '/', icon: '📊' },
-  { label: 'Documents', path: '/documents', icon: '📄' },
-  { label: 'Semantic Search', path: '/search', icon: '🔍' },
-  { label: 'RAG Chat', path: '/chat', icon: '💬' },
-  { label: 'UI Gallery', path: '/components', icon: '🎨' },
-  { label: 'Settings', path: '/settings', icon: '⚙️' },
-];
+  const navItems = [
+    { label: 'Dashboard', path: '/', icon: '📊' },
+    { label: 'Documents', path: '/documents', icon: '📄' },
+    { label: 'Search', path: '/search', icon: '🔍' },
+    { label: 'RAG Chat', path: '/chat', icon: '💬' },
+    { label: 'Profile', path: '/profile', icon: '👤' },
+    { label: 'UI Showcase', path: '/components', icon: '🎨' },
+    { label: 'Settings', path: '/settings', icon: '⚙️' },
+  ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
+  if (!isOpen) return null;
+
   return (
     <aside
       style={{
-        width: isOpen ? '240px' : '0px',
-        opacity: isOpen ? 1 : 0,
-        overflow: 'hidden',
+        width: collapsed ? '70px' : '240px',
         backgroundColor: 'var(--bg-sidebar)',
         borderRight: '1px solid var(--border-subtle)',
-        transition: 'all var(--transition-smooth)',
         display: 'flex',
         flexDirection: 'column',
-        zIndex: 30,
+        justifyContent: 'space-between',
+        transition: 'width var(--transition-normal)',
+        overflowX: 'hidden',
+        height: 'calc(100vh - 64px)',
+        position: 'sticky',
+        top: '64px',
       }}
     >
-      <nav style={{ padding: '1.25rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+      <nav style={{ padding: '1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -45,26 +49,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
               alignItems: 'center',
               gap: '0.75rem',
               padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.95rem',
+              borderRadius: 'var(--radius-sm)',
+              color: isActive ? 'var(--primary)' : 'var(--text-secondary)',
+              backgroundColor: isActive ? 'hsla(252, 85%, 67%, 0.12)' : 'transparent',
               fontWeight: isActive ? 600 : 400,
-              color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-              backgroundColor: isActive ? 'hsla(252, 85%, 67%, 0.15)' : 'transparent',
-              border: isActive ? '1px solid hsla(252, 85%, 67%, 0.3)' : '1px solid transparent',
-              transition: 'all var(--transition-fast)',
+              fontSize: '0.925rem',
+              transition: 'background-color var(--transition-fast)',
+              whiteSpace: 'nowrap',
             })}
           >
             <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
-            <span>{item.label}</span>
+            {!collapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
       </nav>
 
-      <div style={{ marginTop: 'auto', padding: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          Your OWN AI v1.0
+      {user && !collapsed && (
+        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+          <Button variant="ghost" size="sm" fullWidth onClick={() => logout()} leftIcon="🚪">
+            Sign Out
+          </Button>
         </div>
-      </div>
+      )}
     </aside>
   );
 };
