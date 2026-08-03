@@ -79,3 +79,24 @@ endif()
 
 include(GoogleTest)
 gtest_discover_tests(unit_tests)
+
+# Benchmark Executable Target
+add_executable(benchmark
+    benchmark.cpp
+    distance.cpp
+    brute_force.cpp
+    kd_tree.cpp
+    hnsw.cpp
+)
+
+target_include_directories(benchmark PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+if(MSVC)
+    target_compile_options(benchmark PRIVATE /W4 /O2)
+else()
+    target_compile_options(benchmark PRIVATE -O3 -march=native)
+endif()
+
+if(WIN32)
+    target_link_libraries(benchmark PRIVATE ws2_32)
+endif()
