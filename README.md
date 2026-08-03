@@ -195,6 +195,41 @@ http://localhost:8080
 
 ---
 
+### Configuration Options
+
+The VectorDB server reads environment variables at startup, validating parameters and using sensible defaults:
+
+| Environment Variable | Description | Default |
+| :--- | :--- | :--- |
+| `SERVER_PORT` | Port for the HTTP server to listen on | `8080` |
+| `OLLAMA_HOST` | Hostname or IP address of the Ollama service | `127.0.0.1` |
+| `OLLAMA_PORT` | Port number of the Ollama REST API | `11434` |
+| `EMBED_MODEL` | Ollama model name for generating vector embeddings | `nomic-embed-text` |
+| `GEN_MODEL` | Ollama model name for RAG answer generation | `llama3.2` |
+| `CHUNK_SIZE` | Target word count per document chunk | `250` |
+| `CHUNK_OVERLAP` | Overlap word count between consecutive chunks | `30` |
+| `SIMILARITY_THRESHOLD` | Maximum distance threshold for search retrieval | `0.7` |
+| `MAX_PAYLOAD_SIZE` | Maximum HTTP request payload size in bytes | `10485760` (10 MB) |
+| `EMBED_TIMEOUT` | Timeout in seconds for embedding API calls | `30` |
+| `GEN_TIMEOUT` | Timeout in seconds for generation API calls | `180` |
+
+#### Configuration Examples
+
+**PowerShell (Windows):**
+```powershell
+$env:SERVER_PORT="9090"
+$env:EMBED_MODEL="mxbai-embed-large"
+$env:GEN_MODEL="mistral"
+.\build\db.exe
+```
+
+**Bash (Linux / macOS):**
+```bash
+SERVER_PORT=9090 EMBED_MODEL="mxbai-embed-large" GEN_MODEL="mistral" ./build/db
+```
+
+---
+
 ## Using the Application
 
 ### Tab 1: Search (Demo Vectors)
