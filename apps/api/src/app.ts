@@ -9,6 +9,7 @@ import { authRouter } from './routes/auth.routes';
 import { documentRouter } from './routes/document.routes';
 import { searchRouter } from './routes/search.routes';
 import { chatRouter } from './routes/chat.routes';
+import { adminRouter } from './routes/admin.routes';
 
 export const app: Express = express();
 
@@ -32,5 +33,6 @@ app.use('/auth', authRouter);
 app.use('/api/documents', documentRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/admin', adminRouter);
 
 app.use(errorHandler);

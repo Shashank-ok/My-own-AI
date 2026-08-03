@@ -3,6 +3,8 @@ import { DocumentModel } from '../models/Document';
 import { DocumentChunk, IDocumentChunk } from '../models/DocumentChunk';
 import { OllamaClient } from '../clients/ollama.client';
 import { VectorEngineClient, SearchOptions } from '../clients/vectorEngine.client';
+import { VectorEngineNotFoundError } from '../errors/vectorEngine.errors';
+import { SyncService } from './sync.service';
 
 export interface SearchInput {
   ownerId: string;
@@ -34,13 +36,16 @@ export interface SearchResponse {
 export class SearchService {
   private ollamaClient: OllamaClient;
   private vectorEngineClient: VectorEngineClient;
+  private syncService: SyncService;
 
   constructor(
     ollamaClient = new OllamaClient(),
     vectorEngineClient = new VectorEngineClient(),
+    syncService = new SyncService(vectorEngineClient),
   ) {
     this.ollamaClient = ollamaClient;
     this.vectorEngineClient = vectorEngineClient;
+    this.syncService = syncService;
   }
 
   async search(input: SearchInput): Promise<SearchResponse> {
@@ -57,18 +62,35 @@ export class SearchService {
     // 1. Generate query embedding through Ollama client
     const queryVector = await this.ollamaClient.generateEmbedding(input.query.trim());
 
-    // 2. Search C++ vector engine
+    // 2. Search C++ vector engine with lazy recovery fallback
     const searchOptions: SearchOptions = {
       algorithm: input.algorithm,
       metric: input.metric,
     };
 
-    const engineResult = await this.vectorEngineClient.searchVectors(
-      engineNamespace,
-      queryVector,
-      k,
-      searchOptions,
-    );
+    let engineResult;
+    try {
+      engineResult = await this.vectorEngineClient.searchVectors(
+        engineNamespace,
+        queryVector,
+        k,
+        searchOptions,
+      );
+    } catch (error) {
+      // Lazy Recovery: If namespace is missing in C++ engine (e.g. engine restart), rebuild index & retry once!
+      if (error instanceof VectorEngineNotFoundError) {
+        console.warn(`[SearchService] Namespace '${engineNamespace}' not found in engine index. Triggering automatic lazy recovery...`);
+        await this.syncService.rebuildNamespace(engineNamespace, input.ownerId);
+        engineResult = await this.vectorEngineClient.searchVectors(
+          engineNamespace,
+          queryVector,
+          k,
+          searchOptions,
+        );
+      } else {
+        throw error;
+      }
+    }
 
     if (!engineResult.hits || engineResult.hits.length === 0) {
       return {
