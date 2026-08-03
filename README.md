@@ -141,13 +141,23 @@ cd VectorDB
 
 ### Step 5 — Compile the C++ Server
 
-Inside the `VectorDB` folder, run:
+#### Recommended: Using CMake (Cross-Platform)
+
+```powershell
+# Create build directory and generate build files
+cmake -B build
+
+# Build executable
+cmake --build build
+```
+
+*(This produces `build/db.exe` on Windows or `build/db` on Linux/macOS).*
+
+#### Alternative: Direct `g++` Compilation
 
 ```powershell
 g++ -std=c++17 -O2 main.cpp -o db -lws2_32
 ```
-
-This produces `db.exe`. It takes about 10–20 seconds.
 
 > **Troubleshooting:**
 > - `g++: command not found` → MSYS2 not in PATH, redo Step 1 point 5
