@@ -1,0 +1,325 @@
+{
+  "tests": 53,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "V1ServerFixture",
+      "tests": 14,
+      "testsuite": [
+        {
+          "name": "GetHealth",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 572
+        },
+        {
+          "name": "GetStats",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 584
+        },
+        {
+          "name": "ValidSingleInsertion",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 595
+        },
+        {
+          "name": "ValidBatchInsertion",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 613
+        },
+        {
+          "name": "DuplicateBatchIDs",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 632
+        },
+        {
+          "name": "MalformedJSON",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 649
+        },
+        {
+          "name": "SearchInEmptyNamespace",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 659
+        },
+        {
+          "name": "InvalidVectorDimensions",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 674
+        },
+        {
+          "name": "InvalidK",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 688
+        },
+        {
+          "name": "UnsupportedAlgorithm",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 703
+        },
+        {
+          "name": "UnsupportedMetric",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 719
+        },
+        {
+          "name": "NamespaceIsolation",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 735
+        },
+        {
+          "name": "DeleteExistingAndMissingVector",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 751
+        },
+        {
+          "name": "AtomicRebuildSuccessAndFailureRollback",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_integration.cpp",
+          "line": 768
+        }
+      ]
+    },
+    {
+      "name": "AtomicRebuildTest",
+      "tests": 3,
+      "testsuite": [
+        {
+          "name": "DuplicateBatchIDRejection",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_atomic_rebuild.cpp",
+          "line": 226
+        },
+        {
+          "name": "FailedRebuildPreservesActiveIndex",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_atomic_rebuild.cpp",
+          "line": 246
+        },
+        {
+          "name": "ConcurrentSearchDuringRebuild",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_atomic_rebuild.cpp",
+          "line": 273
+        }
+      ]
+    },
+    {
+      "name": "V1ApiTest",
+      "tests": 3,
+      "testsuite": [
+        {
+          "name": "InsertAndSearchInNamespace",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_api.cpp",
+          "line": 191
+        },
+        {
+          "name": "NamespaceIsolation",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_api.cpp",
+          "line": 208
+        },
+        {
+          "name": "DeleteVectorAndNamespace",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_v1_api.cpp",
+          "line": 226
+        }
+      ]
+    },
+    {
+      "name": "ConcurrencyTest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "ParallelReaders",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_concurrency.cpp",
+          "line": 67
+        },
+        {
+          "name": "MixedReadWriteStress",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_concurrency.cpp",
+          "line": 94
+        }
+      ]
+    },
+    {
+      "name": "EdgeCaseTest",
+      "tests": 13,
+      "testsuite": [
+        {
+          "name": "EmptyIndexSearch",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 11
+        },
+        {
+          "name": "OneItemIndex",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 28
+        },
+        {
+          "name": "DuplicateVectors",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 46
+        },
+        {
+          "name": "DuplicateIDs",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 68
+        },
+        {
+          "name": "DeleteMissingID",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 84
+        },
+        {
+          "name": "DeleteHNSWEntryPoint",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 99
+        },
+        {
+          "name": "HNSW_StaleTopLayerDefect",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 119
+        },
+        {
+          "name": "HNSW_EntryPointTopLayerDefect",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 160
+        },
+        {
+          "name": "InsertDeleteCycles",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 203
+        },
+        {
+          "name": "KLargerThanDataset",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 226
+        },
+        {
+          "name": "InvalidDimensionsAndZeroLength",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 251
+        },
+        {
+          "name": "StructuredKDTreeOrder",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 267
+        },
+        {
+          "name": "HNSWGroundTruthComparison",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_edgecases.cpp",
+          "line": 290
+        }
+      ]
+    },
+    {
+      "name": "HNSWTest",
+      "tests": 5,
+      "testsuite": [
+        {
+          "name": "InsertAndBasicSearch",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_hnsw.cpp",
+          "line": 6
+        },
+        {
+          "name": "GraphInfo",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_hnsw.cpp",
+          "line": 26
+        },
+        {
+          "name": "RemoveNode",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_hnsw.cpp",
+          "line": 38
+        },
+        {
+          "name": "DeleteAllNodes",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_hnsw.cpp",
+          "line": 56
+        },
+        {
+          "name": "MutationGroundTruthComparison",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_hnsw.cpp",
+          "line": 78
+        }
+      ]
+    },
+    {
+      "name": "KDTreeTest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "InsertAndSearch",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_kdtree.cpp",
+          "line": 5
+        },
+        {
+          "name": "Rebuild",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_kdtree.cpp",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "name": "BruteForceTest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "InsertAndSearch",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_bruteforce.cpp",
+          "line": 5
+        },
+        {
+          "name": "RemoveItem",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_bruteforce.cpp",
+          "line": 25
+        }
+      ]
+    },
+    {
+      "name": "DistanceTest",
+      "tests": 9,
+      "testsuite": [
+        {
+          "name": "EuclideanMetric",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 5
+        },
+        {
+          "name": "CosineMetricIdentical",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 12
+        },
+        {
+          "name": "CosineMetricOrthogonal",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 17
+        },
+        {
+          "name": "CosineMetricOpposite",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 23
+        },
+        {
+          "name": "ManhattanMetric",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 29
+        },
+        {
+          "name": "EmptyVectors",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 35
+        },
+        {
+          "name": "ZeroNormVector",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 42
+        },
+        {
+          "name": "MetricFactory",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 48
+        },
+        {
+          "name": "NumericalEquivalence",
+          "file": "C:\\Users\\shash\\OneDrive\\Documents\\My own AI\\Your-OWN-AI\\tests\\test_distance.cpp",
+          "line": 61
+        }
+      ]
+    }
+  ]
+}

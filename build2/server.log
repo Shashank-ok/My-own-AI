@@ -1,0 +1,15 @@
+[2026-08-03 16:03:52] [INFO] [Config] === Startup Configuration ===
+[2026-08-03 16:03:52] [INFO] [Config] SERVER_PORT          : 8080
+[2026-08-03 16:03:52] [INFO] [Config] OLLAMA_HOST          : 127.0.0.1
+[2026-08-03 16:03:52] [INFO] [Config] OLLAMA_PORT          : 11434
+[2026-08-03 16:03:52] [INFO] [Config] EMBED_MODEL          : nomic-embed-text
+[2026-08-03 16:03:52] [INFO] [Config] GEN_MODEL            : llama3.2
+[2026-08-03 16:03:52] [INFO] [Config] CHUNK_SIZE           : 250 words
+[2026-08-03 16:03:52] [INFO] [Config] CHUNK_OVERLAP        : 30 words
+[2026-08-03 16:03:52] [INFO] [Config] SIMILARITY_THRESHOLD : 0.700000
+[2026-08-03 16:03:52] [INFO] [Config] MAX_PAYLOAD_SIZE     : 10485760 bytes
+[2026-08-03 16:03:52] [INFO] [Config] EMBED_TIMEOUT        : 30 sec
+[2026-08-03 16:03:52] [INFO] [Config] GEN_TIMEOUT          : 180 sec
+[2026-08-03 16:03:52] [INFO] [Config] =============================
+[2026-08-03 16:03:54] [WARN] [Server] Ollama unavailable at 127.0.0.1:11434 (running in vector-only mode)
+[2026-08-03 16:03:54] [INFO] [Server] VectorDB engine starting on http://localhost:8080

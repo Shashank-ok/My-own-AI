@@ -386,6 +386,67 @@ Recompile and restart.
 
 ---
 
+## Continuous Integration (CI)
+
+[![C++ Engine CI](https://github.com/Shashank-ok/My-own-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Shashank-ok/My-own-AI/actions/workflows/ci.yml)
+
+The C++ vector search engine is tested automatically on **Ubuntu** and **Windows** using GitHub Actions on every push and pull request.
+
+### What CI Verifies
+
+| Step | Description |
+|---|---|
+| **CMake Configure** | Full project configuration: `db`, `unit_tests`, `benchmark` targets |
+| **Build** | All targets compiled with `-O3` / `Release` |
+| **CTest** | 53 tests across 9 test suites run without Ollama |
+| **Benchmark Smoke** | `benchmark` binary executes cleanly and exits with code 0 |
+| **Test Log Upload** | CTest `LastTest.log` uploaded as an artifact on any failure |
+
+### No Ollama Required
+
+All CI tests operate entirely in-process. The 53-test suite covers:
+- Distance metrics (9 tests)
+- BruteForce, KDTree, HNSW indices (9 tests)
+- Edge cases and regression tests (13 tests)
+- Concurrency stress tests (2 tests)
+- V1 API unit tests (3 tests)
+- Atomic rebuild tests (3 tests)
+- HTTP integration tests via `V1ServerFixture` (14 tests)
+
+Ollama-dependent routes (`/embed`, `/generate`, `/rag`) are integration-only and not exercised in CI.
+
+### Running Tests Locally
+
+**Windows (MinGW-w64):**
+```powershell
+$env:PATH = "C:\msys64\ucrt64\bin;C:\Program Files\CMake\bin;" + $env:PATH
+cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+ctest --test-dir build --output-on-failure -C Release
+```
+
+**Ubuntu:**
+```bash
+sudo apt-get install -y cmake ninja-build g++
+cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+### Running the Benchmark
+
+```powershell
+# Windows
+.\build\benchmark.exe
+
+# Ubuntu
+./build/benchmark
+```
+
+Output is written to `benchmark_results.csv` in the working directory.
+
+---
+
 ## License
 
 MIT — use this however you want.

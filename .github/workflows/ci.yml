@@ -1,0 +1,66 @@
+name: C++ Engine Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      # ── 1. Source Code ──────────────────────────────────────────────
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ── 2. Toolchain (Ubuntu only) ──────────────────────────────────
+      - name: Install CMake & Ninja (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y cmake ninja-build g++
+
+      # ── 3. Configure CMake ──────────────────────────────────────────
+      - name: Configure CMake (Ubuntu)
+        if: runner.os == 'Linux'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -G "MinGW Makefiles"
+
+      # ── 4. Build ─────────────────────────────────────────────────────
+      - name: Build All Targets
+        run: cmake --build build --config Release
+
+      # ── 5. Test ──────────────────────────────────────────────────────
+      # All 53 tests operate entirely in-process.
+      # No Ollama or LLM infrastructure is required.
+      - name: Run CTest Suite
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      # ── 6. Smoke-test the Benchmark Binary ───────────────────────────
+      - name: Run Benchmark Binary (Ubuntu)
+        if: runner.os == 'Linux'
+        run: ./build/benchmark
+
+      - name: Run Benchmark Binary (Windows)
+        if: runner.os == 'Windows'
+        run: .\build\benchmark.exe
+
+      # ── 7. Upload Test Logs on Failure ───────────────────────────────
+      - name: Upload CTest Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-logs-${{ matrix.os }}
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build/Testing/Temporary/LastTestsFailed.log
