@@ -12,6 +12,7 @@ import { documentRouter } from './routes/document.routes';
 import { searchRouter } from './routes/search.routes';
 import { chatRouter } from './routes/chat.routes';
 import { adminRouter } from './routes/admin.routes';
+import { docsRouter } from './routes/docs.routes';
 
 export const app: Express = express();
 
@@ -33,6 +34,7 @@ app.use(requestLogger);
 
 app.use(healthRouter);
 app.use('/auth', authRouter);
+app.use('/api/docs', docsRouter);
 
 // Apply general API rate limiting to all /api routes
 app.use('/api', apiRateLimiter);

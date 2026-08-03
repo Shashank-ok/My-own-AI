@@ -1,0 +1,485 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Your OWN AI - Public REST API",
+    "version": "1.0.0",
+    "description": "Public Node.js Express REST API gateway for user authentication, document ingestion, vector-based semantic search, and RAG chat generation.\n\n**IMPORTANT NOTE ON SEARCH DISTANCES:** Search hit `distance` values represent raw distance metrics (e.g. Cosine distance where 0.0 indicates identity, or Euclidean distance) and ARE NOT probability or confidence percentages. Lower distance values indicate higher semantic similarity."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT access token received from /auth/login or /auth/register."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "66ae1234567890abcdef1234" },
+          "email": { "type": "string", "format": "email", "example": "user@example.com" },
+          "name": { "type": "string", "example": "Jane Doe" },
+          "role": { "type": "string", "enum": ["user", "admin"], "example": "user" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string", "example": "66ae9876543210fedcba4321" },
+          "ownerId": { "type": "string", "example": "66ae1234567890abcdef1234" },
+          "title": { "type": "string", "example": "System Architecture Specification" },
+          "status": { "type": "string", "enum": ["pending", "processing", "completed", "failed"], "example": "completed" },
+          "chunkCount": { "type": "integer", "example": 4 },
+          "metadata": { "type": "object", "example": {} },
+          "ingestionError": { "type": "string", "nullable": true, "example": null },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SearchHit": {
+        "type": "object",
+        "description": "A hydrated document chunk matching the semantic vector search. Note: 'distance' is a raw metric distance, NOT a probability score.",
+        "properties": {
+          "chunkId": { "type": "string", "example": "66ae88888888888888888888" },
+          "documentId": { "type": "string", "example": "66ae9876543210fedcba4321" },
+          "documentTitle": { "type": "string", "example": "System Architecture Specification" },
+          "text": { "type": "string", "example": "The C++ vector engine indexes embeddings using HNSW algorithm." },
+          "distance": { "type": "number", "format": "float", "example": 0.0823, "description": "Raw distance metric between query and chunk embedding. Lower values indicate higher similarity. Not a probability score." },
+          "chunkIndex": { "type": "integer", "example": 0 },
+          "metadata": { "type": "object", "example": {} }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string", "enum": ["user", "assistant"], "example": "user" },
+          "content": { "type": "string", "example": "Explain the vector engine connection." },
+          "sourceChunkIds": { "type": "array", "items": { "type": "string" }, "example": ["66ae88888888888888888888"] },
+          "model": { "type": "string", "example": "llama3:latest" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Conversation": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string", "example": "66ae77777777777777777777" },
+          "ownerId": { "type": "string", "example": "66ae1234567890abcdef1234" },
+          "title": { "type": "string", "example": "Explain the vector engine..." },
+          "messages": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": { "type": "string", "example": "Validation error or invalid request parameters" },
+              "code": { "type": "string", "example": "OLLAMA_UNAVAILABLE" },
+              "details": { "type": "object", "nullable": true }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "System Health Status",
+        "description": "Checks connectivity and operational status of the Node.js API, MongoDB connection, Ollama embedding service, and C++ vector engine.",
+        "responses": {
+          "200": {
+            "description": "System health summary",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "healthy",
+                  "timestamp": "2026-08-03T19:50:00.000Z",
+                  "services": {
+                    "api": "ok",
+                    "mongodb": "connected",
+                    "ollama": "reachable",
+                    "vectorEngine": "reachable"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register New User Account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "jane@example.com" },
+                  "password": { "type": "string", "minLength": 8, "example": "SecurePass123!" },
+                  "name": { "type": "string", "minLength": 1, "example": "Jane Doe" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "user": {
+                    "id": "66ae1234567890abcdef1234",
+                    "email": "jane@example.com",
+                    "name": "Jane Doe",
+                    "role": "user",
+                    "createdAt": "2026-08-03T19:50:00.000Z",
+                    "updatedAt": "2026-08-03T19:50:00.000Z"
+                  },
+                  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "409": { "description": "Email already exists", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate User",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "jane@example.com" },
+                  "password": { "type": "string", "example": "SecurePass123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "example": {
+                  "user": {
+                    "id": "66ae1234567890abcdef1234",
+                    "email": "jane@example.com",
+                    "name": "Jane Doe",
+                    "role": "user",
+                    "createdAt": "2026-08-03T19:50:00.000Z",
+                    "updatedAt": "2026-08-03T19:50:00.000Z"
+                  },
+                  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get Current Authenticated Profile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "example": {
+                  "user": {
+                    "id": "66ae1234567890abcdef1234",
+                    "email": "jane@example.com",
+                    "name": "Jane Doe",
+                    "role": "user",
+                    "createdAt": "2026-08-03T19:50:00.000Z",
+                    "updatedAt": "2026-08-03T19:50:00.000Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized token missing or invalid", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Log Out User",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logged out message",
+            "content": {
+              "application/json": {
+                "example": { "message": "Logged out successfully" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents": {
+      "get": {
+        "summary": "List User Documents",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Array of user documents",
+            "content": {
+              "application/json": {
+                "example": {
+                  "documents": [
+                    {
+                      "_id": "66ae9876543210fedcba4321",
+                      "title": "System Architecture Specification",
+                      "status": "completed",
+                      "chunkCount": 4,
+                      "createdAt": "2026-08-03T19:50:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Ingest New Document",
+        "description": "Chunks text content, generates vector embeddings via Ollama, persists chunk embeddings in MongoDB, and indexes vectors into C++ engine.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "text"],
+                "properties": {
+                  "title": { "type": "string", "maxLength": 200, "example": "System Specification" },
+                  "text": { "type": "string", "maxLength": 1000000, "example": "Full text content of document to chunk and index." },
+                  "chunkSize": { "type": "integer", "minimum": 50, "maximum": 2000, "default": 500 },
+                  "chunkOverlap": { "type": "integer", "minimum": 0, "maximum": 500, "default": 50 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document ingested successfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Document ingested successfully",
+                  "document": {
+                    "_id": "66ae9876543210fedcba4321",
+                    "title": "System Specification",
+                    "status": "completed",
+                    "chunkCount": 2
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Ingestion failed error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "503": { "description": "Ollama or Vector Engine Service Unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/documents/{id}": {
+      "get": {
+        "summary": "Get Document Details",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "66ae9876543210fedcba4321" }
+        ],
+        "responses": {
+          "200": { "description": "Document details", "content": { "application/json": { "schema": { "type": "object", "properties": { "document": { "$ref": "#/components/schemas/Document" } } } } } },
+          "404": { "description": "Document not found or owned by another user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "delete": {
+        "summary": "Delete Document",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "66ae9876543210fedcba4321" }
+        ],
+        "responses": {
+          "200": { "description": "Document deleted", "content": { "application/json": { "example": { "message": "Document deleted successfully", "deleted": true } } } },
+          "404": { "description": "Document not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/documents/{id}/retry": {
+      "post": {
+        "summary": "Retry Failed Document Ingestion",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "66ae9876543210fedcba4321" }
+        ],
+        "responses": {
+          "200": { "description": "Retried successfully", "content": { "application/json": { "example": { "message": "Document ingestion retried successfully" } } } },
+          "404": { "description": "Document not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/search": {
+      "post": {
+        "summary": "Semantic Vector Search",
+        "description": "Generates query embedding via Ollama, queries user engine namespace, and hydrates authorized MongoDB chunk texts. **Distance values are raw metrics, not probabilities.**",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["query"],
+                "properties": {
+                  "query": { "type": "string", "maxLength": 2000, "example": "What is the HNSW algorithm?" },
+                  "k": { "type": "integer", "minimum": 1, "maximum": 100, "default": 5 },
+                  "documentIds": { "type": "array", "items": { "type": "string" }, "example": ["66ae9876543210fedcba4321"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching semantic search hits",
+            "content": {
+              "application/json": {
+                "example": {
+                  "query": "What is the HNSW algorithm?",
+                  "namespace": "user_66ae1234567890abcdef1234",
+                  "totalHits": 1,
+                  "latencyUs": 120,
+                  "results": [
+                    {
+                      "chunkId": "66ae88888888888888888888",
+                      "documentId": "66ae9876543210fedcba4321",
+                      "documentTitle": "System Specification",
+                      "text": "The C++ vector engine indexes embeddings using HNSW algorithm.",
+                      "distance": 0.0823,
+                      "chunkIndex": 0,
+                      "metadata": {}
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "503": { "description": "Service unavailable", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/chat/ask": {
+      "post": {
+        "summary": "Ask RAG Question",
+        "description": "Retrieves relevant document chunks, constructs bounded RAG prompt, sends request to Ollama generation model, and records conversation history.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["question"],
+                "properties": {
+                  "question": { "type": "string", "maxLength": 2000, "example": "Summarize vector engine features." },
+                  "conversationId": { "type": "string", "example": "66ae77777777777777777777" },
+                  "k": { "type": "integer", "minimum": 1, "maximum": 100, "default": 5 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "RAG generated answer with sources",
+            "content": {
+              "application/json": {
+                "example": {
+                  "conversationId": "66ae77777777777777777777",
+                  "question": "Summarize vector engine features.",
+                  "answer": "The vector engine provides HNSW indexing and cosine similarity.",
+                  "sources": [],
+                  "model": "llama3:latest"
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "503": { "description": "Ollama service offline", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/chat/conversations": {
+      "get": {
+        "summary": "List User Conversations",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Array of user conversations",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "conversations": { "type": "array", "items": { "$ref": "#/components/schemas/Conversation" } } } } } }
+          }
+        }
+      }
+    },
+    "/api/chat/conversations/{id}": {
+      "get": {
+        "summary": "Get Conversation History",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "66ae77777777777777777777" }
+        ],
+        "responses": {
+          "200": { "description": "Conversation details", "content": { "application/json": { "schema": { "type": "object", "properties": { "conversation": { "$ref": "#/components/schemas/Conversation" } } } } } },
+          "404": { "description": "Conversation not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "delete": {
+        "summary": "Delete Conversation",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "example": "66ae77777777777777777777" }
+        ],
+        "responses": {
+          "200": { "description": "Conversation deleted", "content": { "application/json": { "example": { "deleted": true } } } },
+          "404": { "description": "Conversation not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    }
+  }
+}
