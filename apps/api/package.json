@@ -17,6 +17,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "helmet": "^7.1.0",
+    "mongoose": "^8.4.3",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -27,6 +28,7 @@
     "@typescript-eslint/eslint-plugin": "^7.14.1",
     "@typescript-eslint/parser": "^7.14.1",
     "eslint": "^8.57.0",
+    "mongodb-memory-server": "^9.4.0",
     "prettier": "^3.3.2",
     "supertest": "^7.0.0",
     "tsx": "^4.16.0",
