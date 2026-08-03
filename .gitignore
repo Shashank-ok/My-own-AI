@@ -8,6 +8,18 @@ a.out
 build/
 bin/
 
+# Engine build directories (monorepo)
+engine/cpp/build/
+engine/cpp/build2/
+
+# Node.js
+node_modules/
+dist/
+.next/
+.env
+.env.local
+.env.production
+
 # IDE files
 .vscode/
 .idea/
@@ -16,3 +28,6 @@ bin/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
