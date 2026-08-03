@@ -1,8 +1,10 @@
 import { app } from './app';
-import { env } from './config/env';
+import { config } from './config/env';
 
-const server = app.listen(env.PORT, () => {
-  console.log(`🚀 Express API running on http://localhost:${env.PORT} [${env.NODE_ENV}]`);
+const server = app.listen(config.port, () => {
+  console.log(`🚀 Express API running on http://localhost:${config.port} [${config.env}]`);
+  console.log(`📡 C++ Engine URL : ${config.cppEngineUrl}`);
+  console.log(`🦙 Ollama URL     : ${config.ollamaUrl}`);
 });
 
 function gracefulShutdown(signal: string) {
