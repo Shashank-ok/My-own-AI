@@ -5,6 +5,7 @@ import { config } from './config/env';
 import { requestLogger } from './middleware/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
 import { healthRouter } from './routes/health.routes';
+import { authRouter } from './routes/auth.routes';
 
 export const app: Express = express();
 
@@ -12,7 +13,6 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow requests with no origin (like mobile apps, curl, or server-to-server)
       if (!origin || config.allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -25,5 +25,6 @@ app.use(express.json({ limit: config.requestSizeLimit }));
 app.use(requestLogger);
 
 app.use(healthRouter);
+app.use('/auth', authRouter);
 
 app.use(errorHandler);
