@@ -8,6 +8,7 @@ import { healthRouter } from './routes/health.routes';
 import { authRouter } from './routes/auth.routes';
 import { documentRouter } from './routes/document.routes';
 import { searchRouter } from './routes/search.routes';
+import { chatRouter } from './routes/chat.routes';
 
 export const app: Express = express();
 
@@ -30,5 +31,6 @@ app.use(healthRouter);
 app.use('/auth', authRouter);
 app.use('/api/documents', documentRouter);
 app.use('/api/search', searchRouter);
+app.use('/api/chat', chatRouter);
 
 app.use(errorHandler);
