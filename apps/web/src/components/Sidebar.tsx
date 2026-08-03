@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { label: 'Documents', path: '/documents', icon: '📄' },
   { label: 'Semantic Search', path: '/search', icon: '🔍' },
   { label: 'RAG Chat', path: '/chat', icon: '💬' },
+  { label: 'UI Gallery', path: '/components', icon: '🎨' },
   { label: 'Settings', path: '/settings', icon: '⚙️' },
 ];
 

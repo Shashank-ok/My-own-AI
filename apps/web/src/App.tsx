@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { SearchPage } from './pages/SearchPage';
 import { ChatPage } from './pages/ChatPage';
+import { ComponentsPage } from './pages/ComponentsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -19,6 +20,7 @@ export const App: React.FC = () => {
             <Route path="documents" element={<DocumentsPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="chat" element={<ChatPage />} />
+            <Route path="components" element={<ComponentsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

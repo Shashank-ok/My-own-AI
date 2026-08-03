@@ -1,5 +1,6 @@
 import React from 'react';
 import { config } from '../config/env';
+import { Button } from './ui/Button';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -23,23 +24,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onToggleSidebar}
           aria-label="Toggle sidebar"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            fontSize: '1.25rem',
-            cursor: 'pointer',
-            padding: '0.4rem',
-            borderRadius: 'var(--radius-sm)',
-            display: 'flex',
-            alignItems: 'center',
-          }}
+          style={{ padding: '0.4rem', fontSize: '1.25rem' }}
         >
           ☰
-        </button>
+        </Button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div
