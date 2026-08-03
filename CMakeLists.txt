@@ -55,6 +55,7 @@ add_executable(unit_tests
     tests/test_concurrency.cpp
     tests/test_v1_api.cpp
     tests/test_atomic_rebuild.cpp
+    tests/test_v1_integration.cpp
     distance.cpp
     brute_force.cpp
     kd_tree.cpp
