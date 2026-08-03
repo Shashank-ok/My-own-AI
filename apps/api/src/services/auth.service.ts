@@ -1,22 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { z } from 'zod';
 import { User, IUser } from '../models/User';
 import { config } from '../config/env';
-
-export const registerSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
-  name: z.string().min(2, 'Name must be at least 2 characters long'),
-});
-
-export const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
-
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
+import { RegisterInput, LoginInput } from '../schemas/auth.schema';
 
 export interface SanitizedUser {
   id: string;
@@ -96,4 +82,14 @@ export async function loginUser(input: LoginInput) {
     user: sanitizeUser(user),
     token,
   };
+}
+
+export async function getUserProfile(userId: string) {
+  const user = await User.findById(userId);
+  if (!user) {
+    const err = new Error('User not found') as Error & { statusCode?: number };
+    err.statusCode = 404;
+    throw err;
+  }
+  return sanitizeUser(user);
 }

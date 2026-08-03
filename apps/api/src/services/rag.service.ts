@@ -46,7 +46,6 @@ export class RagService {
 
     // 1. Resolve or prepare Conversation
     let conversation: IConversation;
-    let isNewConversation = false;
 
     if (input.conversationId) {
       if (!mongoose.Types.ObjectId.isValid(input.conversationId)) {
@@ -65,7 +64,6 @@ export class RagService {
       }
       conversation = existing;
     } else {
-      isNewConversation = true;
       const title = input.question.length > 50 ? `${input.question.substring(0, 47)}...` : input.question;
       conversation = new Conversation({
         ownerId: ownerObjectId,
