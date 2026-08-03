@@ -47,7 +47,7 @@ export function validateQuery<T>(schema: ZodSchema<T>): RequestHandler {
       });
       return;
     }
-    req.query = result.data as unknown as Record<string, unknown>;
+    req.query = result.data as unknown as Record<string, string>;
     next();
   };
 }

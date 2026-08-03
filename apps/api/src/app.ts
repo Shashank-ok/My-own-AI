@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config/env';
 import { requestLogger } from './middleware/requestLogger';
+import { requestTimeout } from './middleware/requestTimeout';
+import { apiRateLimiter } from './middleware/apiRateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { healthRouter } from './routes/health.routes';
 import { authRouter } from './routes/auth.routes';
@@ -26,10 +28,14 @@ app.use(
   }),
 );
 app.use(express.json({ limit: config.requestSizeLimit }));
+app.use(requestTimeout);
 app.use(requestLogger);
 
 app.use(healthRouter);
 app.use('/auth', authRouter);
+
+// Apply general API rate limiting to all /api routes
+app.use('/api', apiRateLimiter);
 app.use('/api/documents', documentRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/chat', chatRouter);
