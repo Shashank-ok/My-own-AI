@@ -1,4 +1,5 @@
 import { config } from '../config/env';
+import { getCurrentRequestId } from '../middleware/requestId';
 import {
   VectorEngineError,
   VectorEngineUnavailableError,
@@ -272,8 +273,15 @@ export class VectorEngineClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
+      const requestId = getCurrentRequestId();
+      const headers = {
+        'X-Request-ID': requestId,
+        ...(options.headers as Record<string, string>),
+      };
+
       const res = await fetch(url, {
         ...options,
+        headers,
         signal: controller.signal,
       });
 

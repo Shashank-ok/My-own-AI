@@ -1,4 +1,5 @@
 import { config } from '../config/env';
+import { getCurrentRequestId } from '../middleware/requestId';
 import {
   OllamaError,
   OllamaUnavailableError,
@@ -228,8 +229,15 @@ export class OllamaClient {
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const requestId = getCurrentRequestId();
+      const headers = {
+        'X-Request-ID': requestId,
+        ...(options.headers as Record<string, string>),
+      };
+
       const res = await fetch(url, {
         ...options,
+        headers,
         signal: controller.signal,
       });
       return res;

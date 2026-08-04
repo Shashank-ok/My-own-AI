@@ -923,6 +923,75 @@ int main() {
 
     httplib::Server svr;
 
+    static std::mutex g_logMutex;
+
+    svr.set_pre_routing_handler([](const httplib::Request& req, httplib::Response& res) {
+        auto now = std::chrono::system_clock::now();
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
+        std::string reqId;
+        if (req.has_header("X-Request-ID")) {
+            reqId = req.get_header_value("X-Request-ID");
+        } else if (req.has_header("x-request-id")) {
+            reqId = req.get_header_value("x-request-id");
+        } else {
+            std::ostringstream ss;
+            ss << "cpp-req-" << nowMs << "-" << (rand() % 10000);
+            reqId = ss.str();
+        }
+
+        res.set_header("X-Request-ID", reqId);
+        res.set_header("X-Start-Time-Ms", std::to_string(nowMs));
+        return httplib::Server::HandlerResponse::Unhandled;
+    });
+
+    svr.set_logger([](const httplib::Request& req, const httplib::Response& res) {
+        auto now = std::chrono::system_clock::now();
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
+        std::string reqId = res.has_header("X-Request-ID") ? res.get_header_value("X-Request-ID") : "system";
+
+        long long durationMs = 0;
+        if (res.has_header("X-Start-Time-Ms")) {
+            try {
+                long long startMs = std::stoll(res.get_header_value("X-Start-Time-Ms"));
+                durationMs = nowMs - startMs;
+            } catch (...) {}
+        }
+
+        std::string level = "INFO";
+        if (res.status >= 500) level = "ERROR";
+        else if (res.status >= 400) level = "WARN";
+
+        auto timeT = std::chrono::system_clock::to_time_t(now);
+        auto msPart = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        std::tm tmUtc{};
+#ifdef _WIN32
+        gmtime_s(&tmUtc, &timeT);
+#else
+        gmtime_r(&timeT, &tmUtc);
+#endif
+        std::ostringstream isoSs;
+        isoSs << std::put_time(&tmUtc, "%Y-%m-%dT%H:%M:%S")
+              << '.' << std::setfill('0') << std::setw(3) << msPart.count() << 'Z';
+
+        json logEntry = {
+            {"timestamp", isoSs.str()},
+            {"level", level},
+            {"service", "cpp-vector-engine"},
+            {"requestId", reqId},
+            {"method", req.method},
+            {"path", req.path},
+            {"statusCode", res.status},
+            {"durationMs", durationMs}
+        };
+
+        {
+            std::lock_guard<std::mutex> lock(g_logMutex);
+            std::cout << logEntry.dump() << std::endl;
+        }
+    });
+
     svr.set_exception_handler([](const httplib::Request& req, httplib::Response& res, std::exception_ptr ep) {
         std::string msg = "Unknown exception";
         try {

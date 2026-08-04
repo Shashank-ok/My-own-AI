@@ -2,6 +2,7 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config/env';
+import { requestIdMiddleware } from './middleware/requestId';
 import { requestLogger } from './middleware/requestLogger';
 import { requestTimeout } from './middleware/requestTimeout';
 import { apiRateLimiter } from './middleware/apiRateLimiter';
@@ -16,6 +17,7 @@ import { docsRouter } from './routes/docs.routes';
 
 export const app: Express = express();
 
+app.use(requestIdMiddleware);
 app.use(helmet());
 app.use(
   cors({
