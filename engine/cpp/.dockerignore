@@ -1,0 +1,8 @@
+build/
+build_test/
+build_audit/
+CMakeFiles/
+CMakeCache.txt
+*.exe
+*.o
+*.a

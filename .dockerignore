@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+dist
+build
+build_test
+build_audit
+.env
+.env.local
+*.log
+.vscode
+.idea

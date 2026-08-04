@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # 1. MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: myownai-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # 2. C++ Vector Search Engine
+  engine:
+    build:
+      context: ./engine/cpp
+      dockerfile: Dockerfile
+    container_name: myownai-engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # 3. Node.js Express API Gateway
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: myownai-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/myownai
+      - CPP_ENGINE_URL=http://engine:8080
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - OLLAMA_EMBEDDING_MODEL=${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      - OLLAMA_GENERATE_MODEL=${OLLAMA_GENERATE_MODEL:-llama3:8b}
+      - JWT_SECRET=${JWT_SECRET:-dev-docker-secret-key-12345}
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173,http://localhost:3001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      engine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # 4. React Frontend UI (Nginx)
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: myownai-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  mongodb_data:

@@ -213,6 +213,42 @@ Results are exported to `benchmarks/benchmark_results.csv`.
 
 ---
 
+## Docker & Local Containerization
+
+The platform includes Docker container definitions and a production-grade `docker-compose.yml` for local containerized deployment.
+
+### Container Architecture
+- **`web`**: Nginx static server hosting React SPA (Port `80`)
+- **`api`**: Node.js Express Gateway running in unprivileged `node` user container (Port `3000`)
+- **`engine`**: Multi-stage Debian build of C++ Vector Engine running in unprivileged `engineuser` container (Port `8080`)
+- **`mongodb`**: MongoDB 7.0 persistent database (`mongodb://mongodb:27017/myownai`)
+- **Ollama**: Connects to host machine or external Ollama service (`http://host.docker.internal:11434`). *Note: Ollama is intentionally kept external to leverage GPU hardware acceleration.*
+
+### Docker Compose Commands
+
+#### 1. Startup All Containers
+```bash
+docker compose up -d --build
+```
+
+#### 2. Check Service Health & Logs
+```bash
+docker compose ps
+docker compose logs -f api
+```
+
+#### 3. Shutdown Containers & Stop Services
+```bash
+docker compose down
+```
+
+#### 4. Shutdown & Remove Persistent Data Volumes
+```bash
+docker compose down -v
+```
+
+---
+
 ## License
 
 MIT License — free to modify and use.
