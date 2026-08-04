@@ -1,134 +1,203 @@
-# My Own AI — Monorepo
+# My Own AI — Full-Stack RAG & Vector Search Monorepo
 
-A full-stack AI assistant built from first principles:
-a **C++ vector search engine**, a **Node.js REST API**, and a **React web UI** —
-all orchestrated as a clean monorepo.
+A production-grade Retrieval-Augmented Generation (RAG) platform built from first principles:
+a **C++ vector search engine**, a **Node.js + Express REST API Gateway**, and a **React + TypeScript web UI**.
 
 [![C++ Engine CI](https://github.com/Shashank-ok/My-own-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Shashank-ok/My-own-AI/actions/workflows/ci.yml)
 
 ---
 
-## Repository Structure
+## System Architecture
 
+```text
+React + TypeScript Frontend (Port 5173 / 3001)
+        ↓  (HTTP REST)
+Node.js + Express API Gateway (Port 3000)
+  ├── MongoDB (Metadata & Document Persistence)
+  ├── Ollama (Embeddings: nomic-embed-text | LLM: llama3:8b)
+  └── C++ Vector Search Engine (Port 8080)
 ```
+
+### Architectural Rules
+- The React frontend communicates **exclusively** with the Node.js API Gateway (`http://localhost:3000`).
+- The frontend **never** connects directly to MongoDB, Ollama, or the C++ Vector Engine.
+- The Node.js API handles authentication, document chunking, user ownership isolation, and RAG orchestration.
+
+---
+
+## Monorepo Components
+
+```text
 /
-├── apps/
-│   ├── api/            ← Node.js + Express REST API (Stage B)
-│   └── web/            ← React frontend UI (Stage C)
-├── engine/
-│   └── cpp/            ← C++ vector search engine (Stage A — complete)
-├── packages/
-│   └── shared/         ← Shared TypeScript types and schemas (Stage B+)
-├── benchmarks/
-│   └── benchmark_results.csv  ← Empirical engine benchmark data
-├── docs/               ← Architecture and API documentation
-├── docker/             ← Docker and docker-compose definitions
-├── .github/
-│   └── workflows/
-│       └── ci.yml      ← GitHub Actions CI (Ubuntu + Windows matrix)
-└── README.md           ← This file
+├── engine/cpp/       ← High-performance C++17 Vector Search Engine (HNSW, KD-Tree, BruteForce)
+├── apps/api/         ← Node.js + Express + TypeScript REST API Gateway
+├── apps/web/         ← React 18 + Vite + TypeScript Frontend UI
+├── benchmarks/       ← Engine benchmark scripts & empirical output (benchmark_results.csv)
+└── docs/             ← OpenAPI specification (openapi.json) & architectural documents
+```
+
+| Tier | Tech Stack | Port | Test Runner | Automated Tests |
+| :--- | :--- | :--- | :--- | :--- |
+| **C++ Engine** | C++17, cpp-httplib, nlohmann-json, GoogleTest | `8080` | `ctest` | **53 tests** |
+| **Node API** | Node.js, Express, TypeScript, Vitest, MongoDB | `3000` | `vitest` | **110 tests** |
+| **React Web** | React 18, Vite, TypeScript, Vitest, Testing Library | `5173` / `3001` | `vitest` | **27 tests** |
+| **Total Suite** | | | | **190 passing tests** |
+
+---
+
+## Prerequisites & Requirements
+
+### System Software
+1. **Windows 10/11** (or Linux / macOS)
+2. **MinGW-w64 GCC 13+** and **CMake 3.24+** (for C++ engine compilation)
+3. **Node.js v18+** or **v20+** and **npm**
+4. **MongoDB Community Server** (running locally on default port `27017`)
+5. **Ollama** (running locally on port `11434`)
+
+### Required Ollama Models
+Pull the required embedding and LLM generation models before starting the application:
+```powershell
+ollama pull nomic-embed-text
+ollama pull llama3:8b
 ```
 
 ---
 
-## Components
+## Correct System Startup Order
 
-### `engine/cpp` — C++ Vector Search Engine
+To run the full end-to-end stack locally, start services in the following sequence:
 
-A production-quality, namespace-isolated, multi-algorithm vector search engine written from scratch in C++17.
+1. **Start MongoDB**: Ensure MongoDB service is running (`mongodb://localhost:27017`).
+2. **Start Ollama**: Run `ollama serve` (listens on `http://localhost:11434`).
+3. **Build & Start C++ Engine**:
+   ```powershell
+   # Windows (MinGW)
+   cmake -S engine/cpp -B engine/cpp/build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+   cmake --build engine/cpp/build
+   .\engine\cpp\build\db.exe 8080
+   ```
+4. **Build & Start Node.js API**:
+   ```powershell
+   npm --prefix apps/api install
+   npm --prefix apps/api run build
+   npm --prefix apps/api run dev
+   ```
+5. **Build & Start React Frontend**:
+   ```powershell
+   npm --prefix apps/web install
+   npm --prefix apps/web run build
+   npm --prefix apps/web run dev
+   ```
 
-| Feature | Detail |
-| :--- | :--- |
-| **Algorithms** | HNSW, KDTree, BruteForce |
-| **Distance metrics** | Cosine (normalized), Euclidean, Manhattan |
-| **API** | Versioned HTTP REST (`/v1/*`) served by cpp-httplib |
-| **Namespaces** | Full multi-tenant namespace isolation |
-| **Concurrency** | `std::shared_mutex` — shared reads, exclusive writes |
-| **Atomic rebuild** | Zero-downtime namespace index replacement via `shared_ptr` swap |
-| **Tests** | 53 GoogleTest cases — distance, index, edge cases, concurrency, HTTP integration |
-| **CI** | Ubuntu + Windows via GitHub Actions |
+Open `http://localhost:5173` (or `http://localhost:3001` if port 5173 is occupied) in your browser.
 
-**Quick start:**
+---
+
+## Development & Build Commands
+
+### C++ Vector Search Engine (`engine/cpp`)
 ```powershell
-# Windows (MinGW-w64)
-$env:PATH = "C:\msys64\ucrt64\bin;C:\Program Files\CMake\bin;" + $env:PATH
+# Configure CMake build directory
 cmake -S engine/cpp -B engine/cpp/build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+
+# Compile db.exe, unit_tests.exe, and benchmark.exe
 cmake --build engine/cpp/build
-.\engine\cpp\build\db.exe
+
+# Execute vector engine server on port 8080
+.\engine\cpp\build\db.exe 8080
 ```
 
-```bash
-# Ubuntu / macOS
-cmake -S engine/cpp -B engine/cpp/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build engine/cpp/build
-./engine/cpp/build/db
-```
-
-See [`engine/cpp/README.md`](engine/cpp/README.md) for full C++ engine documentation.
-
----
-
-### `apps/api` — Node.js REST API *(Stage B — in progress)*
-
-Express + TypeScript API layer responsible for:
-- Document ingestion and chunking
-- Ollama embedding integration
-- RAG pipeline orchestration
-- Forwarding vector operations to `engine/cpp`
-- MongoDB persistence
-
----
-
-### `apps/web` — React Frontend *(Stage C — planned)*
-
-React UI for:
-- Document upload and search
-- Vector space visualization (PCA scatter plot)
-- Engine statistics dashboard
-
----
-
-## Running Tests
-
-### C++ Engine Tests (53 tests)
-
+### Node.js REST API Gateway (`apps/api`)
 ```powershell
-# Windows
-$env:PATH = "C:\msys64\ucrt64\bin;C:\Program Files\CMake\bin;" + $env:PATH
+# Install dependencies
+npm --prefix apps/api install
+
+# Compile TypeScript to JavaScript
+npm --prefix apps/api run build
+
+# Start dev server with hot reload
+npm --prefix apps/api run dev
+```
+
+### React Web UI (`apps/web`)
+```powershell
+# Install dependencies
+npm --prefix apps/web install
+
+# Validate TypeScript and build Vite production bundle
+npm --prefix apps/web run build
+
+# Start Vite development server
+npm --prefix apps/web run dev
+```
+
+---
+
+## Running Automated Tests (190 Tests Total)
+
+### 1. C++ Engine Test Suite (53 Tests)
+```powershell
 cmake -S engine/cpp -B engine/cpp/build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
 cmake --build engine/cpp/build
 ctest --test-dir engine/cpp/build --output-on-failure
 ```
 
-```bash
-# Ubuntu
-cmake -S engine/cpp -B engine/cpp/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build engine/cpp/build
-ctest --test-dir engine/cpp/build --output-on-failure
-```
-
-### Benchmark
-
+### 2. Node.js API Test Suite (110 Tests)
+*Note: On Windows, backend tests run Vitest with `--fileParallelism=false` to prevent MongoMemoryServer binary process locks.*
 ```powershell
-.\engine\cpp\build\benchmark.exe   # Windows
-./engine/cpp/build/benchmark        # Ubuntu
+npm --prefix apps/api run test
 ```
 
+### 3. React Frontend Test Suite (27 Tests)
+```powershell
+npm --prefix apps/web run test
+```
+
+### 4. Running Benchmarks
+```powershell
+.\engine\cpp\build\benchmark.exe
+```
 Results are exported to `benchmarks/benchmark_results.csv`.
 
 ---
 
-## Continuous Integration
+## Frontend Port & CORS Configuration
 
-GitHub Actions runs on every push and pull request:
-- **Ubuntu** (GCC + Ninja) and **Windows** (MinGW-w64)
-- CMake configure → build → CTest (53 tests) → benchmark smoke test
-- Test logs uploaded as artifacts on failure
+* **Default Frontend Origin**: `http://localhost:5173`
+* **Fallback Frontend Origin**: `http://localhost:3001` (if port 5173 is in use)
+* **Allowed Origins Setting** (`apps/api/.env`):
+  ```env
+  ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:3001
+  ```
 
-No Ollama, MongoDB, or Node.js required for the C++ test suite.
+---
+
+## Troubleshooting & Common Issues
+
+### 1. CORS Preflight Blocked in Browser
+* **Symptom**: Browser network logs show `403 Forbidden` or `CORS policy: Origin not allowed`.
+* **Fix**: Ensure your frontend URL (e.g. `http://localhost:3001`) is included in `ALLOWED_ORIGINS` in `apps/api/.env`.
+
+### 2. Ollama Connection Error (`502 Bad Gateway` / `504 Timeout`)
+* **Symptom**: Ingestion or chat displays `Ollama engine unavailable`.
+* **Fix**: Ensure `ollama serve` is running and the required models exist:
+  ```powershell
+  ollama list
+  # If missing, run:
+  ollama pull nomic-embed-text
+  ollama pull llama3:8b
+  ```
+
+### 3. MongoDB Connection Failure / Vitest Timeout on Windows
+* **Symptom**: `MongoMemoryServer` throws hook timeout or binary file lock contention.
+* **Fix**: Execute tests using `npm --prefix apps/api run test` which invokes `vitest run --fileParallelism=false`.
+
+### 4. TypeScript JSON Import Errors (`apps/api`)
+* **Symptom**: `Cannot find module '../docs/openapi.json'`.
+* **Fix**: Confirm `"resolveJsonModule": true` is present under `compilerOptions` in `apps/api/tsconfig.json`.
 
 ---
 
 ## License
 
-MIT — use this however you want.
+MIT License — free to modify and use.
