@@ -18,7 +18,7 @@ export const envSchema = z.object({
   JWT_SECRET: z.string().min(1).default('dev-secret-key-change-in-prod-12345'),
   ALLOWED_ORIGINS: z
     .string()
-    .default('http://localhost:3000,http://localhost:5173')
+    .default('http://localhost:3000,http://localhost:5173,http://localhost:3001')
     .transform((val) => val.split(',').map((origin) => origin.trim()).filter(Boolean)),
   REQUEST_SIZE_LIMIT: z.string().default('10mb'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),

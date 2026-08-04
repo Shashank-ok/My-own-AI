@@ -157,6 +157,15 @@ describe('Security Baseline Test Suite', () => {
   });
 
   describe('CORS Restrictions', () => {
+    it('should accept CORS preflight from allowed origins including http://localhost:3001', async () => {
+      const res = await request(app)
+        .options('/api/documents')
+        .set('Origin', 'http://localhost:3001');
+
+      expect(res.status).toBe(204);
+      expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3001');
+    });
+
     it('should reject CORS preflight from un-whitelisted origin', async () => {
       const res = await request(app)
         .options('/api/documents')
