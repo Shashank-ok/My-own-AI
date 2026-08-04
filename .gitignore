@@ -31,3 +31,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# MongoMemoryServer binary download cache
+.mongoms/
