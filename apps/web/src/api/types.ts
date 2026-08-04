@@ -31,6 +31,13 @@ export interface UserProfileResponse {
   user: UserDTO;
 }
 
+/**
+ * Backend ingestion pipeline statuses.
+ * pending   → queued, not yet started
+ * processing → actively chunking / embedding / indexing (one atomic backend state)
+ * completed  → fully indexed and searchable (displayed as 'Ready')
+ * failed     → pipeline error; ingestionError field will contain details
+ */
 export type DocumentStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface DocumentDTO {
@@ -52,6 +59,7 @@ export interface IngestDocumentRequest {
   text: string;
   chunkSize?: number;
   chunkOverlap?: number;
+  metadata?: Record<string, string>;
 }
 
 export interface DocumentResponse {

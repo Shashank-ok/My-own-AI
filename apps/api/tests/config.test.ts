@@ -10,8 +10,10 @@ describe('Centralized Typed Configuration (loadConfig)', () => {
     expect(cfg.mongoUri).toBe('mongodb://localhost:27017/myownai');
     expect(cfg.cppEngineUrl).toBe('http://localhost:8080');
     expect(cfg.ollamaUrl).toBe('http://localhost:11434');
+    expect(cfg.ollamaEmbeddingModel).toBe('nomic-embed-text');
+    expect(cfg.ollamaGenerateModel).toBe('llama3:8b');
     expect(cfg.jwtSecret).toBe('dev-secret-key-change-in-prod-12345');
-    expect(cfg.allowedOrigins).toEqual(['http://localhost:3000', 'http://localhost:5173']);
+    expect(cfg.allowedOrigins).toEqual(['http://localhost:3000', 'http://localhost:5173', 'http://localhost:3001']);
     expect(cfg.requestSizeLimit).toBe('10mb');
     expect(cfg.rateLimit).toEqual({ windowMs: 900000, max: 100 });
     expect(cfg.requestTimeoutMs).toBe(30000);
@@ -24,6 +26,8 @@ describe('Centralized Typed Configuration (loadConfig)', () => {
       MONGODB_URI: 'mongodb://user:pass@mongo-host:27017/prod-db',
       CPP_ENGINE_URL: 'http://cpp-engine:8080',
       OLLAMA_URL: 'http://ollama-host:11434',
+      OLLAMA_EMBEDDING_MODEL: 'custom-embed-v1',
+      OLLAMA_GENERATE_MODEL: 'custom-llama-v1',
       JWT_SECRET: 'production-super-secret-key-999',
       ALLOWED_ORIGINS: 'http://app.domain.com, https://admin.domain.com',
       REQUEST_SIZE_LIMIT: '50mb',
@@ -39,6 +43,8 @@ describe('Centralized Typed Configuration (loadConfig)', () => {
     expect(cfg.mongoUri).toBe('mongodb://user:pass@mongo-host:27017/prod-db');
     expect(cfg.cppEngineUrl).toBe('http://cpp-engine:8080');
     expect(cfg.ollamaUrl).toBe('http://ollama-host:11434');
+    expect(cfg.ollamaEmbeddingModel).toBe('custom-embed-v1');
+    expect(cfg.ollamaGenerateModel).toBe('custom-llama-v1');
     expect(cfg.jwtSecret).toBe('production-super-secret-key-999');
     expect(cfg.allowedOrigins).toEqual(['http://app.domain.com', 'https://admin.domain.com']);
     expect(cfg.requestSizeLimit).toBe('50mb');

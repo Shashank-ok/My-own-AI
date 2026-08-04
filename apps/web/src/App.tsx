@@ -12,6 +12,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { SearchPage } from './pages/SearchPage';
 import { ChatPage } from './pages/ChatPage';
+import { VectorVisualizationPage } from './pages/VectorVisualizationPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ComponentsPage } from './pages/ComponentsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -52,6 +53,7 @@ export const App: React.FC = () => {
             <Route path="documents" element={<DocumentsPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="chat" element={<ChatPage />} />
+            <Route path="visualization" element={<VectorVisualizationPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="components" element={<ComponentsPage />} />
             <Route path="settings" element={<SettingsPage />} />

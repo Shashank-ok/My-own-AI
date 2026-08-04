@@ -14,7 +14,7 @@ export interface DocumentsContextType {
   refresh: () => Promise<void>;
   loadMore: () => void;
   selectDocument: (doc: DocumentDTO | null) => void;
-  ingestDocument: (title: string, text: string) => Promise<DocumentDTO>;
+  ingestDocument: (title: string, text: string, metadata?: Record<string, string>) => Promise<DocumentDTO>;
   deleteDocument: (id: string) => Promise<void>;
   retryDocument: (id: string) => Promise<DocumentDTO>;
 }
@@ -53,8 +53,8 @@ export const DocumentsProvider: React.FC<{ children: ReactNode }> = ({ children 
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const ingestDocument = async (title: string, text: string): Promise<DocumentDTO> => {
-    const res = await api.documents.ingestDocument({ title, text });
+  const ingestDocument = async (title: string, text: string, metadata?: Record<string, string>): Promise<DocumentDTO> => {
+    const res = await api.documents.ingestDocument({ title, text, ...(metadata ? { metadata } : {}) });
     await fetchDocuments();
     return res.document;
   };
