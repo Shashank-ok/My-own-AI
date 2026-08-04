@@ -37,16 +37,10 @@
     "@typescript-eslint/parser": "^7.14.1",
     "@vitest/coverage-v8": "^1.6.0",
     "eslint": "^8.57.0",
-    "mongodb-memory-server": "^9.4.0",
     "prettier": "^3.3.2",
     "supertest": "^7.0.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.2",
     "vitest": "^1.6.0"
-  },
-  "mongodbMemoryServer": {
-    "version": "7.0.14",
-    "downloadDir": "./.mongoms/download",
-    "debug": false
   }
 }

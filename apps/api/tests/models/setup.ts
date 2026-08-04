@@ -1,43 +1,36 @@
 /**
  * Per-test-file MongoDB helpers.
  *
- * MongoMemoryServer lifecycle is managed by tests/globalSetup.ts (a Vitest
- * setupFiles entry). The server and Mongoose connection are created ONCE for
- * the entire test run.
+ * Uses the real local MongoDB (mongodb://127.0.0.1:27017/myownai_test) via
+ * the URI injected from tests/globalSetup.ts. This avoids the 5-minute cold-
+ * start cost of MongoMemoryServer on this machine.
  *
- * Usage in each test file:
- *
- *   beforeAll(async () => { await setupMongoMemoryServer(); });
- *   afterAll(async  () => { await teardownMongoMemoryServer(); });  // no-op
- *   beforeEach(async () => { await clearMongoMemoryServer(); });
+ * Each test file:
+ *   beforeAll  → setupMongoMemoryServer()   connects Mongoose to test DB
+ *   afterAll   → teardownMongoMemoryServer() disconnects Mongoose
+ *   beforeEach → clearMongoMemoryServer()   wipes all collections for isolation
  */
 import mongoose from 'mongoose';
-import { serverReadyPromise } from '../globalSetup'; // wait for singleton
+import { inject } from 'vitest';
 
-// Re-export promise so tests can import it directly if needed.
-export { serverReadyPromise };
-
-/**
- * Called in each test file's beforeAll().
- * Awaits the singleton promise so any test that runs before the IIFE in
- * globalSetup.ts finishes will wait safely.
- */
 export async function setupMongoMemoryServer(): Promise<void> {
-  await serverReadyPromise;
+  const uri = inject('mongoUri') as string;
+  if (!uri) {
+    throw new Error(
+      "'mongoUri' was not injected. Ensure globalSetup: ['tests/globalSetup.ts'] is set in vitest.config.ts.",
+    );
+  }
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(uri);
+  }
 }
 
-/**
- * Called in each test file's afterAll().
- * Intentionally a no-op — the connection is kept alive across all files.
- * The real teardown is registered by globalSetup.ts via a single afterAll().
- */
 export async function teardownMongoMemoryServer(): Promise<void> {
-  // no-op — owned by globalSetup.ts
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
 }
 
-/**
- * Wipes all MongoDB collections between tests to ensure isolation.
- */
 export async function clearMongoMemoryServer(): Promise<void> {
   const collections = mongoose.connection.collections;
   for (const key in collections) {

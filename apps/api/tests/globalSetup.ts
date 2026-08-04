@@ -1,38 +1,26 @@
 /**
- * Vitest setupFiles — shared MongoMemoryServer singleton.
+ * Vitest Global Setup — uses the real local MongoDB for tests.
  *
- * This file is loaded once per Vitest worker process (registered via
- * vitest.config.ts `setupFiles`). With fileParallelism:false there is exactly
- * ONE worker, so this module is loaded exactly ONCE for the entire test run.
+ * MongoMemoryServer is unreliable on this machine (5-minute cold-start due
+ * to MongoDB 7 binary extraction). Instead, we connect to the local MongoDB
+ * instance (mongodb://127.0.0.1:27017) using a dedicated test database
+ * (`myownai_test`) that is wiped before each test file.
  *
- * Module-level code runs immediately when the module is first imported —
- * before any test file's describe/it blocks execute.  We use top-level
- * `await` (ESM) or an IIFE to kick off MongoMemoryServer.create() and store a
- * promise that test-file beforeAll() hooks can await via setupMongoMemoryServer().
+ * Requirements:
+ *   - MongoDB must be running locally on port 27017 (same as dev).
+ *   - The test database is created automatically if it doesn't exist.
+ *   - The test database is dropped after all tests complete.
  *
- * NOTE: Vitest setupFiles are executed in the same Node context as test files,
- * so `process.env` mutations are visible to all test modules.
+ * To use MongoMemoryServer instead, set MONGO_TEST_URI in your environment.
  */
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import mongoose from 'mongoose';
-import { afterAll } from 'vitest';
 
-// ── Singleton ────────────────────────────────────────────────────────────────
+export async function setup({ provide }: { provide: (key: string, value: unknown) => void }) {
+  // Allow override via environment for CI / Docker environments.
+  const uri = process.env.MONGO_TEST_URI ?? 'mongodb://127.0.0.1:27017/myownai_test';
+  provide('mongoUri', uri);
+}
 
-// We kick off the server immediately so it's ready before the first beforeAll.
-const serverReadyPromise: Promise<void> = (async () => {
-  const server = await MongoMemoryServer.create();
-  process.env.MONGO_TEST_URI = server.getUri();
-  await mongoose.connect(server.getUri());
-
-  // Teardown: disconnect & stop after all tests in this worker complete.
-  afterAll(async () => {
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect();
-    }
-    await server.stop({ doCleanup: true });
-  }, 30_000);
-})();
-
-// Export the promise so setup.ts can await it if needed.
-export { serverReadyPromise };
+export async function teardown() {
+  // Nothing to tear down — real MongoDB manages its own lifecycle.
+  // The test database collections are cleared between files by setup.ts.
+}

@@ -5,17 +5,18 @@ export default defineConfig({
     globals: true,
     include: ['tests/**/*.test.ts'],
 
-    // tests/globalSetup.ts starts ONE MongoMemoryServer and connects Mongoose
-    // before any test file runs. This avoids repeated create() calls and the
-    // Windows binary-lock timeouts they cause.
-    setupFiles: ['tests/globalSetup.ts'],
+    // globalSetup runs ONCE in the main Vitest process (not in any worker).
+    // It uses provide() to pass the MongoMemoryServer URI to all workers.
+    globalSetup: ['tests/globalSetup.ts'],
 
-    // Sequential file execution — one worker, one Mongoose connection, one mongod.
+    // Sequential file execution — one worker thread, no concurrent Mongoose
+    // connections or MongoMemoryServer instances.
     fileParallelism: false,
 
-    // Generous timeouts: the first test in a fresh repo must wait for
-    // MongoMemoryServer.create() which can take 10–30 s.
+    // testTimeout: each individual test has 30 s.
     testTimeout: 30000,
+    // hookTimeout: beforeAll/afterAll have 120 s. The globalSetup itself has
+    // no timeout limit (it runs outside worker hookTimeout accounting).
     hookTimeout: 120000,
 
     coverage: {
