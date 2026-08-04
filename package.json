@@ -1,0 +1,22 @@
+{
+  "name": "my-own-ai-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-Stack RAG Vector Search Monorepo",
+  "scripts": {
+    "setup": "npm --prefix apps/api install && npm --prefix apps/web install",
+    "build:engine": "cmake -S engine/cpp -B engine/cpp/build -G \"MinGW Makefiles\" -DCMAKE_BUILD_TYPE=Release && cmake --build engine/cpp/build",
+    "build:api": "npm --prefix apps/api run build",
+    "build:web": "npm --prefix apps/web run build",
+    "build": "npm run build:engine && npm run build:api && npm run build:web",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "test:engine": "ctest --test-dir engine/cpp/build_test --output-on-failure",
+    "test:api": "npm --prefix apps/api run test",
+    "test:web": "npm --prefix apps/web run test",
+    "test": "npm run test:engine && npm run test:api && npm run test:web",
+    "lint:api": "npm --prefix apps/api run lint",
+    "lint:web": "npm --prefix apps/web run lint",
+    "lint": "npm run lint:api && npm run lint:web"
+  }
+}

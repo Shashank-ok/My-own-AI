@@ -93,6 +93,21 @@ Open `http://localhost:5173` (or `http://localhost:3001` if port 5173 is occupie
 
 ---
 
+## Root Monorepo Workflow Commands
+
+The monorepo provides simple, unified `npm` scripts at the root level:
+
+| Task | Command | Description |
+| :--- | :--- | :--- |
+| **Install Dependencies** | `npm run setup` | Installs JS packages for both `apps/api` and `apps/web`. |
+| **Build C++ Engine** | `npm run build:engine` | Configures & builds C++ engine binaries (`db.exe`, `unit_tests.exe`). |
+| **Start Node API** | `npm run dev:api` | Launches Node.js Express server on port `3000`. |
+| **Start React UI** | `npm run dev:web` | Launches Vite React dev server on port `5173`/`3001`. |
+| **Run All Tests** | `npm test` | Runs CTest engine suite, API Vitest suite, and Web Vitest suite (**190 tests**). |
+| **Run Linting** | `npm run lint` | Runs ESLint across both `apps/api` and `apps/web`. |
+
+---
+
 ## Development & Build Commands
 
 ### C++ Vector Search Engine (`engine/cpp`)
