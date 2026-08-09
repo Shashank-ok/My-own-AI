@@ -18,8 +18,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, isOpen = tr
     { label: 'RAG Chat', path: '/chat', icon: '💬' },
     { label: 'Vector Demo', path: '/visualization', icon: '📍' },
     { label: 'Profile', path: '/profile', icon: '👤' },
-    { label: 'UI Showcase', path: '/components', icon: '🎨' },
-    { label: 'Settings', path: '/settings', icon: '⚙️' },
   ];
 
   if (!isOpen) return null;
