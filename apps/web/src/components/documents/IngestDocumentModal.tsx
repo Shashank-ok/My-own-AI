@@ -3,6 +3,10 @@ import { useDocuments } from '../../context/DocumentsContext';
 import { api, DocumentDTO, DocumentStatus } from '../../api';
 import { Modal, Input, Button, Alert } from '../ui';
 import { Textarea } from '../ui/Textarea';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Point pdf.js worker at the CDN build so we don't need a custom webpack/vite config
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 /* ── Constants ────────────────────────────────────────────────────────────── */
 const MAX_PAYLOAD_BYTES = 10 * 1024 * 1024; // 10 MB (matches Express limit)
@@ -51,6 +55,22 @@ function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / 1024 / 1024).toFixed(2)} MB`;
+}
+
+/* ── PDF text extractor ───────────────────────────────────────────────────── */
+async function extractPdfText(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pageTexts: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ');
+    pageTexts.push(pageText);
+  }
+  return pageTexts.join('\n\n');
 }
 
 /* ── MetadataEditor ───────────────────────────────────────────────────────── */
@@ -312,13 +332,32 @@ export const IngestDocumentModal: React.FC<IngestDocumentModalProps> = ({ isOpen
   };
 
   /* File picker */
+  const [isReadingFile, setIsReadingFile] = useState(false);
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
-    const content = await file.text();
-    setText(content);
-    if (!title) setTitle(file.name.replace(/\.[^.]+$/, ''));
+    setTextError(undefined);
+    setIsReadingFile(true);
+    try {
+      let content: string;
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        content = await extractPdfText(file);
+        if (!content.trim()) {
+          setTextError('Could not extract text from this PDF. It may be scanned/image-only.');
+          setIsReadingFile(false);
+          return;
+        }
+      } else {
+        content = await file.text();
+      }
+      setText(content);
+      if (!title) setTitle(file.name.replace(/\.[^.]+$/, ''));
+    } catch {
+      setTextError('Failed to read file. Please try again.');
+    } finally {
+      setIsReadingFile(false);
+    }
   };
 
   /* Validation */
@@ -523,15 +562,16 @@ export const IngestDocumentModal: React.FC<IngestDocumentModalProps> = ({ isOpen
                     )}
                   </span>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    Accepted: plain text, Markdown
+                    Accepted: plain text, Markdown, PDF
                   </span>
                 </label>
                 <input
                   id="doc-file"
                   ref={fileInputRef}
                   type="file"
-                  accept=".txt,.md,.markdown,text/plain,text/markdown"
+                  accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf"
                   onChange={handleFileChange}
+                  disabled={isReadingFile}
                   aria-describedby={textError ? 'doc-file-error' : undefined}
                   style={{ display: 'none' }}
                 />
@@ -540,7 +580,12 @@ export const IngestDocumentModal: React.FC<IngestDocumentModalProps> = ({ isOpen
                     {textError}
                   </span>
                 )}
-                {text && !textError && (
+                {isReadingFile && (
+                  <span style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)' }}>
+                    ⏳ Reading file…
+                  </span>
+                )}
+                {text && !textError && !isReadingFile && (
                   <span style={{ fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>
                     ✅ {text.length.toLocaleString()} characters loaded from file
                   </span>

@@ -94,7 +94,9 @@ export async function request<T>(endpoint: string, options: RequestOptions = {})
       throw new ApiError('Request timed out on the client', 504, 'CLIENT_TIMEOUT');
     }
 
-    const netMessage = error instanceof Error ? error.message : 'Network failure or server offline';
+    const netMessage =
+      'Cannot reach the server. If this is the first request in a while, the server may be waking up ' +
+      '(free tier — wait 30 seconds and try again). If the problem persists, check the browser console for CORS errors.';
     throw new ApiError(netMessage, 0, 'NETWORK_ERROR');
   }
 }
