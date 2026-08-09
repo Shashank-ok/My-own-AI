@@ -25,4 +25,4 @@ services:
       - key: OLLAMA_GENERATE_MODEL
         value: llama3:8b
       - key: ALLOWED_ORIGINS
-        value: https://shashank-ok.github.io
+        value: https://shashank-ok.github.io,http://localhost:3001,http://localhost:5173
