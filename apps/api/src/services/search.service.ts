@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { DocumentModel } from '../models/Document';
 import { DocumentChunk, IDocumentChunk } from '../models/DocumentChunk';
-import { OllamaClient } from '../clients/ollama.client';
+import { OllamaClient, generateFallbackEmbedding } from '../clients/ollama.client';
 import { VectorEngineClient, SearchOptions } from '../clients/vectorEngine.client';
 import { VectorEngineNotFoundError } from '../errors/vectorEngine.errors';
 import { SyncService } from './sync.service';

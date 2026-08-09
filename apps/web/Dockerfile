@@ -3,11 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json tsconfig.json vite.config.ts index.html ./
+COPY package*.json tsconfig.json tsconfig.node.json vite.config.ts index.html ./
 RUN npm ci
 
 COPY src/ ./src/
-COPY public/ ./public/
 
 RUN npm run build
 

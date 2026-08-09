@@ -1,12 +1,13 @@
 # Stage 1: Build Node.js API TypeScript code
+# Build context: monorepo root (.)
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json tsconfig.json ./
+COPY apps/api/package*.json apps/api/tsconfig.json ./
 RUN npm ci
 
-COPY src/ ./src/
+COPY apps/api/src/ ./src/
 COPY docs/ ./docs/
 
 RUN npm run build
@@ -18,7 +19,7 @@ RUN apk add --no-cache curl
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY apps/api/package*.json ./
 RUN npm ci --only=production
 
 COPY --from=builder /app/dist ./dist

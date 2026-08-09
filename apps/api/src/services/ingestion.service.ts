@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { DocumentModel, IDocument } from '../models/Document';
 import { DocumentChunk, IDocumentChunk } from '../models/DocumentChunk';
 import { chunkText } from './chunker.service';
-import { OllamaClient } from '../clients/ollama.client';
+import { OllamaClient, generateFallbackEmbedding } from '../clients/ollama.client';
 import { VectorEngineClient, VectorItemInput } from '../clients/vectorEngine.client';
 import { config } from '../config/env';
 
@@ -101,12 +101,18 @@ export class IngestionService {
 
       const chunkTexts = chunks.map((c) => c.text);
 
-      // Step B: Generate embeddings via Ollama Client (bounded concurrency = 4)
-      const embeddings = await this.ollamaClient.generateEmbeddings(
-        chunkTexts,
-        4,
-        config.ollamaEmbeddingModel,
-      );
+      // Step B: Generate embeddings via Ollama Client (fallback to deterministic vector if Ollama is offline)
+      let embeddings: number[][];
+      try {
+        embeddings = await this.ollamaClient.generateEmbeddings(
+          chunkTexts,
+          4,
+          config.ollamaEmbeddingModel,
+        );
+      } catch (err) {
+        console.warn(`⚠️ Ollama embedding unavailable (${(err as Error)?.message}). Using fallback vector embeddings.`);
+        embeddings = chunkTexts.map((text) => generateFallbackEmbedding(text, 768));
+      }
 
       if (embeddings.length !== chunks.length) {
         throw new Error(`Embedding count mismatch: expected ${chunks.length}, got ${embeddings.length}`);

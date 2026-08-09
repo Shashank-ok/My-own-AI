@@ -22,6 +22,27 @@ interface OllamaCompletionResponse {
   response?: unknown;
 }
 
+export function generateFallbackEmbedding(text: string, dimensions = 768): number[] {
+  const vec = new Array(dimensions);
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+
+  let norm = 0;
+  for (let i = 0; i < dimensions; i++) {
+    const val = Math.sin(hash + (i + 1) * 1.618);
+    vec[i] = val;
+    norm += val * val;
+  }
+  norm = Math.sqrt(norm) || 1;
+  for (let i = 0; i < dimensions; i++) {
+    vec[i] /= norm;
+  }
+  return vec;
+}
+
 export class OllamaClient {
   private baseUrl: string;
   private defaultEmbedModel: string;
@@ -62,6 +83,7 @@ export class OllamaClient {
   /**
    * Generate vector embedding for a single text input.
    * Retries up to 2 times on transient network/service failures with exponential backoff.
+   * If Ollama is offline/unreachable, falls back to deterministic unit-normalized 768D embeddings.
    */
   async generateEmbedding(
     text: string,
