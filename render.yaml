@@ -1,0 +1,28 @@
+services:
+  # Node.js Express API Gateway
+  - type: web
+    name: my-own-ai-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false          # You will paste your Atlas URI in the Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random value
+      - key: CPP_ENGINE_URL
+        value: ""            # Leave blank — C++ engine not deployed, API falls back gracefully
+      - key: OLLAMA_URL
+        value: ""            # Leave blank — Ollama not deployed, uses fallback embeddings
+      - key: OLLAMA_EMBEDDING_MODEL
+        value: nomic-embed-text
+      - key: OLLAMA_GENERATE_MODEL
+        value: llama3:8b
+      - key: ALLOWED_ORIGINS
+        value: https://shashank-ok.github.io
