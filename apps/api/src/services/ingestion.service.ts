@@ -146,7 +146,17 @@ export class IngestionService {
         metadata: { chunkIndex: chunk.chunkIndex },
       }));
 
-      await this.vectorEngineClient.insertBatch(engineNamespace, vectorItems);
+      // Step D: Batch index vectors in C++ engine (optional — skipped if engine is offline)
+      try {
+        await this.vectorEngineClient.insertBatch(engineNamespace, vectorItems);
+      } catch (engineErr) {
+        // Vector engine is not deployed in cloud (Render/serverless) — skip indexing.
+        // Chunks are persisted in MongoDB; search will fall back to MongoDB text search.
+        console.warn(
+          `⚠️ Vector engine unavailable during ingestion for doc ${docIdStr}: ${(engineErr as Error)?.message}. ` +
+          `Document will be stored in MongoDB only (vector search degraded).`
+        );
+      }
 
       // Step E: Mark Document completed
       doc.status = 'completed';

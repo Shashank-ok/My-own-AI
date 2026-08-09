@@ -17,6 +17,8 @@ import { docsRouter } from './routes/docs.routes';
 
 export const app: Express = express();
 
+// Trust Render/Cloudflare proxy so express-rate-limit reads the real client IP
+app.set('trust proxy', 1);
 app.use(requestIdMiddleware);
 app.use(helmet());
 app.use(
