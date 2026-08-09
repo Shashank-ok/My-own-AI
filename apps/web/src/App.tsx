@@ -19,7 +19,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 
 export const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/My-own-AI">
       <AuthProvider>
         <Routes>
           {/* Public-only Authentication Routes */}
